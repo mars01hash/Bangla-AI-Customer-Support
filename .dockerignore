@@ -1,0 +1,47 @@
+# Git metadata
+.git
+.github
+.gitignore
+
+# Python virtual environment and caches
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+backend/venv/
+backend/.venv/
+backend/env/
+backend/ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js assets and modules
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.eslintcache
+npm-debug.log*
+
+# Database and file uploads
+*.db
+*.sqlite3
+backend/support_platform.db
+backend/chroma_db/
+backend/uploads/
+chroma_db/
+uploads/
+
+# IDE files
+.vscode/
+.idea/
+*.suo
+*.sln
+*~
+
+# Temporary docs and instructions
+run.txt
+docs/
+walkthrough.md
+task.md
+implementation_plan.md

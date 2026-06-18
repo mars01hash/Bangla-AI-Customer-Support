@@ -1,0 +1,55 @@
+replicaCount: 2
+
+backend:
+  image:
+    repository: bangla-support-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 500m
+      memory: 1Gi
+
+frontend:
+  image:
+    repository: bangla-support-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: NodePort
+    port: 80
+    nodePort: 30080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+postgresql:
+  image:
+    repository: postgres
+    tag: 15-alpine
+  persistence:
+    size: 10Gi
+  env:
+    postgresUser: postgres
+    postgresDatabase: support_db
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+    - host: support.bangla-ai.local
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /api
+          pathType: Prefix

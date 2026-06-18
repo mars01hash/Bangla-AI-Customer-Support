@@ -1,0 +1,44 @@
+Here are the two ways you can run the application:
+
+Option A: Using Docker (Recommended - Runs the Full Stack)
+This runs the Frontend, Backend, PostgreSQL database, Prometheus, and Grafana in containerized harmony.
+
+Open your terminal and run:
+powershell
+cd deployment
+docker-compose up --build
+Once the build finishes, access the services at:
+Frontend App: http://localhost
+API Swagger Docs: http://localhost:8000/docs
+Prometheus Telemetry: http://localhost:9090
+Grafana Visualization: http://localhost:3000 (User: admin / Pass: admin)
+
+Option B: Running Locally (For Active Development)
+1. Start the FastAPI Backend
+powershell
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python app/main.py
+
+The API server will run at http://localhost:8000.
+
+2. Start the React Frontend
+Open a new terminal window:
+
+powershell
+cd frontend
+npm install
+npm run dev
+
+The Vite development server will launch at http://localhost:5173.
+
+Pre-seeded Accounts
+Customer Chat: Access it directly on the landing page (no login required).
+Agent Dashboard: Click Agent Portal in the navigation bar and log in:
+Email: agent@example.com
+Password: agentpassword123
+Admin Dashboard: Log in using the admin account:
+Email: admin@example.com
+Password: adminpassword123

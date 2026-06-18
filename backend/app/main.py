@@ -1,0 +1,126 @@
+import logging
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.database import engine, Base, SessionLocal
+from app.models import User
+from app.auth import get_password_hash
+from app.api.endpoints import api_router
+from app.rag.vectorstore import vector_store
+
+# Configure logging format
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+# 1. Initialize DB tables automatically on startup
+logger.info("Initializing database schemas...")
+Base.metadata.create_all(bind=engine)
+
+def seed_database():
+    """Seed base roles and RAG documents so system works out of the box."""
+    db = SessionLocal()
+    try:
+        # Check and seed default Admin User
+        admin = db.query(User).filter(User.email == "admin@example.com").first()
+        if not admin:
+            admin_user = User(
+                email="admin@example.com",
+                hashed_password=get_password_hash(settings.ADMIN_INITIAL_PASSWORD),
+                full_name="System Administrator",
+                role="admin",
+                is_active=True
+            )
+            db.add(admin_user)
+            logger.info("Default administrator seeded: admin@example.com / adminpassword123")
+            
+        # Check and seed default Support Agent User
+        agent = db.query(User).filter(User.email == "agent@example.com").first()
+        if not agent:
+            agent_user = User(
+                email="agent@example.com",
+                hashed_password=get_password_hash("agentpassword123"),
+                full_name="Agent Rahat",
+                role="agent",
+                is_active=True
+            )
+            db.add(agent_user)
+            logger.info("Default support agent seeded: agent@example.com / agentpassword123")
+            
+        # Check and seed default Customer User
+        customer = db.query(User).filter(User.email == "customer@example.com").first()
+        if not customer:
+            customer_user = User(
+                email="customer@example.com",
+                hashed_password=get_password_hash("customerpassword123"),
+                full_name="Tahmid Hasan",
+                role="customer",
+                is_active=True
+            )
+            db.add(customer_user)
+            logger.info("Default customer account seeded: customer@example.com / customerpassword123")
+            
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error seeding user accounts: {e}")
+        db.rollback()
+    finally:
+        db.close()
+        
+    # Pre-seed Chroma vector database with sample customer support questions
+    try:
+        logger.info("Checking and seeding Chroma vector base FAQs...")
+        sample_faqs = [
+            "অর্ডার ডেলিভারিতে কত সময় লাগবে? সাধারণ ডেলিভারি সময় ঢাকা সিটির ভিতরে ২-৩ কার্যদিবস এবং ঢাকার বাইরে ৪-৫ কার্যদিবস।",
+            "পেমেন্ট ফেরত পাওয়ার উপায় কী? যদি আপনি কোনো ত্রুটিযুক্ত পণ্য পেয়ে থাকেন, তবে ৩-৫ কার্যদিবসের মধ্যে আপনার মূল পেমেন্ট মাধ্যমে টাকা ফেরত দেওয়া হবে। অনুগ্রহ করে বিলিং পেজে সাপোর্ট টিকিট সাবমিট করুন।",
+            "নতুন অর্ডারে কি কোনো ডিসকাউন্ট কুপন আছে? হ্যাঁ! আমাদের স্টোরে নতুন রেজিস্টার করলে প্রথম অর্ডারে ১০% ফ্ল্যাট ডিসকাউন্ট কুপন (কোড: WELCOME10) পাওয়া যাবে।",
+            "রিফান্ড বা রিটার্ন পলিসি কী? পণ্য হাতে পাওয়ার ৭ দিনের মধ্যে অব্যবহৃত অবস্থায় মূল প্যাকেজিং সহ রিটার্ন বা রিফান্ড ক্লেইম করা যাবে।",
+            "আপনাদের হেল্পলাইন বা কাস্টমার কেয়ার নাম্বার কত? আমাদের হটলাইন নাম্বার হলো ০৯৬১২৩৪৫৬৭৮ যা প্রতিদিন সকাল ৯টা থেকে রাত ৯টা পর্যন্ত সচল থাকে।"
+        ]
+        
+        # Test if vector base is empty
+        test_queries = vector_store.query_documents("ডেলিভারি", n_results=1)
+        if not test_queries or test_queries[0]["confidence_score"] < 0.3:
+            metas = [{"source": "sample_faq.txt", "type": "faq"} for _ in sample_faqs]
+            vector_store.add_documents(sample_faqs, metas)
+            logger.info("Chroma vector database FAQs successfully seeded.")
+        else:
+            logger.info("Vector database FAQ base already populated. Skipping seeding.")
+    except Exception as e:
+        logger.error(f"Error seeding vector database: {e}")
+
+seed_database()
+
+# 2. Instantiate FastAPI
+app = FastAPI(
+    title="Bangla AI Customer Support Platform",
+    description="Enterprise RAG-enabled multilingual customer support chatbot and ticketing workspace.",
+    version="1.0.0"
+)
+
+# 3. Configure CORS policies for UI communication
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify frontend port/domain
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 4. Bind routers
+app.include_router(api_router, prefix="/api")
+
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "service": "Bangla Customer Support API Backend",
+        "documentation": "/docs"
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("app.main:app", host=settings.HOST, port=settings.PORT, reload=settings.DEBUG)
