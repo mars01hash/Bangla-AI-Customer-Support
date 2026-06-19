@@ -10,7 +10,7 @@ from app.config import settings
 from app.agents.state import AgentState
 from app.rag.vectorstore import vector_store
 from app.database import SessionLocal
-from app.models import Ticket, User
+from app.models import Ticket, User, Order
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +105,8 @@ def query_llm_api(prompt: str, system_prompt: str = "") -> str:
             res = httpx.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=10)
             if res.status_code == 200:
                 return res.json()["choices"][0]["message"]["content"]
-                
+            logger.error(f"OpenAI API returned non-200 status {res.status_code}: {res.text[:200]}")
+
         elif settings.LLM_PROVIDER == "groq":
             headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
             payload = {
@@ -118,7 +119,8 @@ def query_llm_api(prompt: str, system_prompt: str = "") -> str:
             res = httpx.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=10)
             if res.status_code == 200:
                 return res.json()["choices"][0]["message"]["content"]
-                
+            logger.error(f"Groq API returned non-200 status {res.status_code}: {res.text[:200]}")
+
         elif settings.LLM_PROVIDER == "huggingface":
             # API endpoint for HF model inference
             headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
@@ -133,6 +135,7 @@ def query_llm_api(prompt: str, system_prompt: str = "") -> str:
                 if isinstance(result, list) and len(result) > 0:
                     return result[0].get("generated_text", "")
                 return str(result)
+            logger.error(f"HuggingFace API returned non-200 status {res.status_code}: {res.text[:200]}")
                 
     except Exception as e:
         logger.error(f"Error querying external LLM provider ({settings.LLM_PROVIDER}): {e}. Using mock/fallback.")
@@ -211,7 +214,7 @@ def faq_agent_node(state: AgentState) -> Dict[str, Any]:
     combined_context = "\n\n".join(context_blocks)
     
     # Confidence score is the average of retrieved matches (default to 0.0 if empty list)
-    confidence = float(np.mean([d["confidence_score"] for d in retrieved_docs])) if retrieved_docs else 0.0
+    confidence = float(sum([d["confidence_score"] for d in retrieved_docs]) / len(retrieved_docs)) if retrieved_docs else 0.0
     
     # If confidence is below 0.35, route to automatic escalation
     if confidence < 0.35:
@@ -249,25 +252,75 @@ def order_support_agent_node(state: AgentState) -> Dict[str, Any]:
     """Node: Handles customer order status lookups and order issues."""
     lang = state["detected_language"]
     msg = state["current_message"]
-    
-    # Extract order ID format (e.g. #12345 or ORD-987)
-    order_match = re.search(r'(#\d+|ord-\d+|\b\d{5}\b)', msg.lower())
-    order_id = order_match.group(1).upper() if order_match else None
-    
-    if order_id:
-        if lang in ["bn", "mixed"]:
-            answer = f"আমি আপনার অর্ডার {order_id} ট্র্যাক করেছি। এটি বর্তমানে ডেলিভারির জন্য প্রক্রিয়াধীন রয়েছে এবং আগামী ২ কার্যদিবসের মধ্যে আপনার ঠিকানায় পৌঁছাবে।"
+
+    # Extract order ID (e.g. #12345, ORD-12345, or bare 5-digit number)
+    order_match = re.search(r'(ord-[\w]+|#\d+|\d{5})', msg.lower())
+    raw_id = order_match.group(1).upper() if order_match else None
+
+    # Normalise to ORD-XXXXX format for DB lookup
+    if raw_id:
+        if raw_id.startswith('#'):
+            db_order_id = 'ORD-' + raw_id[1:]
+        elif re.match(r'^\d+$', raw_id):
+            db_order_id = 'ORD-' + raw_id
         else:
-            answer = f"I have successfully tracked your order {order_id}. It is currently in transit and is expected to arrive within the next 2 business days."
+            db_order_id = raw_id
+    else:
+        db_order_id = None
+
+    order = None
+    if db_order_id:
+        db = SessionLocal()
+        try:
+            order = db.query(Order).filter(Order.order_id == db_order_id).first()
+        except Exception as e:
+            logger.error(f"DB lookup failed for order {db_order_id}: {e}")
+        finally:
+            db.close()
+
+    if order:
+        status_map = {
+            "processing": ("প্রক্রিয়াধীন", "processing"),
+            "shipped": ("শিপ করা হয়েছে", "shipped"),
+            "out_for_delivery": ("ডেলিভারিতে আছে", "out for delivery"),
+            "delivered": ("ডেলিভারি সম্পন্ন", "delivered"),
+            "cancelled": ("বাতিল", "cancelled"),
+        }
+        bn_status, en_status = status_map.get(order.status, (order.status, order.status))
+        delivery_info = f" আনুমানিক ডেলিভারি: {order.estimated_delivery}।" if order.estimated_delivery else ""
+        delivery_info_en = f" Estimated delivery: {order.estimated_delivery}." if order.estimated_delivery else ""
+
+        if lang in ["bn", "mixed"]:
+            answer = (
+                f"আপনার অর্ডার {order.order_id} পাওয়া গেছে।\n"
+                f"গ্রাহক: {order.customer_name}\n"
+                f"স্ট্যাটাস: {bn_status}"
+                f"{delivery_info}"
+            )
+        else:
+            answer = (
+                f"Order {order.order_id} found.\n"
+                f"Customer: {order.customer_name}\n"
+                f"Status: {en_status}"
+                f"{delivery_info_en}"
+            )
+        confidence = 1.0
+    elif db_order_id:
+        if lang in ["bn", "mixed"]:
+            answer = f"দুঃখিত, {db_order_id} নম্বরের কোনো অর্ডার আমাদের সিস্টেমে পাওয়া যায়নি। অনুগ্রহ করে আইডিটি পুনরায যাচাই করুন।"
+        else:
+            answer = f"Sorry, no order with ID {db_order_id} was found in our system. Please double-check the order ID."
+        confidence = 0.5
     else:
         if lang in ["bn", "mixed"]:
-            answer = "অর্ডার স্ট্যাটাস দেখতে অনুগ্রহ করে আপনার ৫ সংখ্যার অর্ডার আইডিটি উল্লেখ করুন (যেমন: #১২৩৪৫)।"
+            answer = "অর্ডার স্ট্যাটাস দেখতে অনুগ্রহ করে আপনার অর্ডার আইডিটি উল্লেখ করুন (যেমন: ORD-12345 বা #12345)।"
         else:
-            answer = "To assist you with your order details, could you please provide your 5-digit Order ID (e.g., #12345)?"
-            
+            answer = "To look up your order, please provide your Order ID (e.g., ORD-12345 or #12345)."
+        confidence = 0.9
+
     return {
         "answer": answer,
-        "confidence_score": 0.9,
+        "confidence_score": confidence,
         "sources": [],
         "messages": [AIMessage(content=answer)]
     }

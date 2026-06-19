@@ -84,6 +84,21 @@ class Feedback(Base):
     conversation = relationship("Conversation", back_populates="feedbacks")
 
 
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(String(50), unique=True, index=True, nullable=False)  # e.g. "ORD-12345"
+    customer_name = Column(String(255), nullable=False)
+    customer_email = Column(String(255), nullable=False)
+    status = Column(String(50), default="processing")  # 'processing', 'shipped', 'out_for_delivery', 'delivered', 'cancelled'
+    items = Column(Text, nullable=True)   # JSON list of item names
+    total_amount = Column(Float, nullable=True)
+    estimated_delivery = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
 class KnowledgeDocument(Base):
     __tablename__ = "knowledge_documents"
 

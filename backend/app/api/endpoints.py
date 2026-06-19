@@ -1,9 +1,13 @@
+import asyncio
 import io
 import json
 import logging
 import datetime
+import os
+import uuid
+import httpx
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -11,17 +15,19 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from app.config import settings
 from app.database import get_db
-from app.models import User, Ticket, Conversation, Message, Feedback, KnowledgeDocument
+from app.models import User, Ticket, Conversation, Message, Feedback, KnowledgeDocument, Order
 from app.schemas import (
-    UserCreate, UserResponse, Token, TicketCreate, TicketResponse, 
-    TicketUpdate, FeedbackCreate, FeedbackResponse, AnalyticsSummaryResponse, 
-    AnalyticsChartsResponse, DailyDataPoint
+    UserCreate, UserResponse, Token, TicketCreate, TicketResponse,
+    TicketUpdate, FeedbackCreate, FeedbackResponse, AnalyticsSummaryResponse,
+    AnalyticsChartsResponse, DailyDataPoint,
+    OrderCreate, OrderUpdate, OrderResponse
 )
 from app.auth import (
     get_password_hash, verify_password, create_access_token, 
     get_current_user, get_current_active_user, require_admin, require_agent_or_admin
 )
 from app.agents.graph import support_graph
+from app.agents.nodes import detect_sentiment_heuristics
 from app.rag.ingestion import document_ingestor
 
 logger = logging.getLogger(__name__)
@@ -120,9 +126,10 @@ def chat_rest(
         db.commit()
         db.refresh(conv)
         
-    # 2. Load conversation history
+    # 2. Load conversation history (SQL-side LIMIT avoids loading all rows)
     history = []
-    for msg in conv.messages[-10:]: # Limit context window to 10 messages
+    recent_msgs = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.id.desc()).limit(10).all()
+    for msg in reversed(recent_msgs):
         if msg.sender == "user":
             history.append(HumanMessage(content=msg.content))
         else:
@@ -198,17 +205,16 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, db: Session 
             if not user_text:
                 continue
                 
-            # Fetch history
+            # Fetch history (SQL-side LIMIT avoids loading all rows)
             history = []
-            # Reload session DB object to avoid cache issues
-            db.refresh(conv)
-            for msg in conv.messages[-10:]:
+            recent_msgs = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.id.desc()).limit(10).all()
+            for msg in reversed(recent_msgs):
                 if msg.sender == "user":
                     history.append(HumanMessage(content=msg.content))
                 else:
                     history.append(AIMessage(content=msg.content))
-            
-            # Invoke LangGraph workflow
+
+            # Invoke LangGraph workflow (run_in_executor keeps blocking httpx off the event loop)
             state_input = {
                 "messages": history,
                 "current_message": user_text,
@@ -219,8 +225,9 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str, db: Session 
                 "confidence_score": 1.0,
                 "sources": []
             }
-            
-            graph_output = support_graph.invoke(state_input)
+
+            loop = asyncio.get_event_loop()
+            graph_output = await loop.run_in_executor(None, support_graph.invoke, state_input)
             
             answer = graph_output.get("answer", "")
             confidence = graph_output.get("confidence_score", 1.0)
@@ -356,7 +363,96 @@ def submit_feedback(feedback_in: FeedbackCreate, db: Session = Depends(get_db)):
 
 
 # ----------------------------------------------------
-# 5. KNOWLEDGE FILE UPLOADS
+# 5. ORDER MANAGEMENT ENDPOINTS
+# ----------------------------------------------------
+
+@api_router.post("/orders", response_model=OrderResponse)
+def create_order(
+    order_in: OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_agent_or_admin)
+):
+    """Create a new order record."""
+    import json as _json
+    order_id = f"ORD-{uuid.uuid4().hex[:5].upper()}"
+    order = Order(
+        order_id=order_id,
+        customer_name=order_in.customer_name,
+        customer_email=order_in.customer_email,
+        status="processing",
+        items=_json.dumps(order_in.items),
+        total_amount=order_in.total_amount,
+        estimated_delivery=order_in.estimated_delivery
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@api_router.get("/orders", response_model=List[OrderResponse])
+def list_orders(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_agent_or_admin)
+):
+    """List all orders, optionally filtered by status."""
+    query = db.query(Order)
+    if status:
+        query = query.filter(Order.status == status)
+    return query.order_by(Order.created_at.desc()).all()
+
+
+@api_router.get("/orders/{order_id}", response_model=OrderResponse)
+def get_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_agent_or_admin)
+):
+    """Retrieve a single order by its order_id."""
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+
+@api_router.put("/orders/{order_id}", response_model=OrderResponse)
+def update_order(
+    order_id: str,
+    order_update: OrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_agent_or_admin)
+):
+    """Update order status or estimated delivery."""
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order_update.status:
+        order.status = order_update.status
+    if order_update.estimated_delivery is not None:
+        order.estimated_delivery = order_update.estimated_delivery
+    db.commit()
+    db.refresh(order)
+    return order
+
+
+@api_router.delete("/orders/{order_id}")
+def delete_order(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Delete an order (Admin only)."""
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    db.delete(order)
+    db.commit()
+    return {"detail": f"Order {order_id} deleted."}
+
+
+# ----------------------------------------------------
+# 6. KNOWLEDGE FILE UPLOADS
 # ----------------------------------------------------
 
 @api_router.post("/upload")
@@ -498,7 +594,6 @@ def get_analytics_charts(db: Session = Depends(get_db), current_user: User = Dep
 @api_router.post("/voice/stt")
 def speech_to_text(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_active_user)
 ):
     """
     Translate customer vocal audio streams to text strings.
@@ -535,7 +630,6 @@ def speech_to_text(
 def text_to_speech(
     text: str = Form(...),
     lang: str = Form("bn"),
-    current_user: User = Depends(get_current_active_user)
 ):
     """
     Convert text strings to high-fidelity audio mp3 streaming audio downloads.
@@ -564,7 +658,151 @@ def text_to_speech(
 
 
 # ----------------------------------------------------
-# 8. TELEMETRY PROMETHEUS METRICS
+# 8. TELEGRAM BOT INTEGRATION
+# ----------------------------------------------------
+
+def _send_telegram_message(chat_id: int, text: str) -> None:
+    """Send a text message back to a Telegram chat."""
+    token = settings.TELEGRAM_BOT_TOKEN
+    if not token:
+        logger.warning("TELEGRAM_BOT_TOKEN not set — cannot send Telegram reply.")
+        return
+    try:
+        httpx.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": text},
+            timeout=10
+        )
+    except Exception as e:
+        logger.error(f"Failed to send Telegram message to {chat_id}: {e}")
+
+
+def _run_chat_for_telegram(user_text: str, session_id: str, db: Session) -> str:
+    """Run the LangGraph agent for a Telegram message and persist to DB."""
+    conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+    if not conv:
+        conv = Conversation(session_id=session_id, title=user_text[:40])
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+
+    history = []
+    recent = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.id.desc()).limit(10).all()
+    for msg in reversed(recent):
+        if msg.sender == "user":
+            history.append(HumanMessage(content=msg.content))
+        else:
+            history.append(AIMessage(content=msg.content))
+
+    state_input = {
+        "messages": history,
+        "current_message": user_text,
+        "session_id": session_id,
+        "ticket_escalated": False,
+        "ticket_id": None,
+        "answer": "",
+        "confidence_score": 1.0,
+        "sources": []
+    }
+    output = support_graph.invoke(state_input)
+
+    answer = output.get("answer", "দুঃখিত, আমি এই মুহূর্তে উত্তর দিতে পারছি না।")
+    lang = output.get("detected_language", "en")
+    sentiment = output.get("detected_sentiment", "neutral")
+
+    db.add(Message(conversation_id=conv.id, sender="user", content=user_text))
+    db.add(Message(
+        conversation_id=conv.id, sender="bot", content=answer,
+        confidence_score=output.get("confidence_score", 1.0),
+        sources=json.dumps(output.get("sources", []))
+    ))
+    conv.language = lang
+    conv.sentiment = sentiment
+    db.commit()
+
+    if output.get("ticket_escalated") and output.get("ticket_id"):
+        answer += f"\n\n🎫 Ticket ID: {output['ticket_id']}"
+
+    return answer
+
+
+@api_router.post("/telegram/webhook")
+async def telegram_webhook(request: Request, db: Session = Depends(get_db)):
+    """
+    Telegram Bot webhook endpoint.
+    Register this URL with Telegram via /telegram/set-webhook or BotFather.
+    Requires TELEGRAM_BOT_TOKEN in environment/.env.
+    """
+    try:
+        update = await request.json()
+    except Exception:
+        return {"ok": True}
+
+    message = update.get("message") or update.get("edited_message")
+    if not message:
+        return {"ok": True}
+
+    chat_id = message["chat"]["id"]
+    text = message.get("text", "").strip()
+
+    if not text:
+        _send_telegram_message(chat_id, "শুধুমাত্র টেক্সট মেসেজ পাঠান। (Please send text messages only.)")
+        return {"ok": True}
+
+    # /start command — welcome message
+    if text == "/start":
+        _send_telegram_message(
+            chat_id,
+            "হ্যালো! আমি Bangla AI Customer Support Bot। বাংলা বা ইংরেজিতে আপনার প্রশ্ন লিখুন।\n\n"
+            "Hello! I am Bangla AI Customer Support Bot. Ask me anything in Bangla or English."
+        )
+        return {"ok": True}
+
+    session_id = f"telegram-{chat_id}"
+    loop = asyncio.get_event_loop()
+    answer = await loop.run_in_executor(None, _run_chat_for_telegram, text, session_id, db)
+    _send_telegram_message(chat_id, answer)
+    return {"ok": True}
+
+
+@api_router.post("/telegram/set-webhook")
+def set_telegram_webhook(
+    webhook_url: str = Form(...),
+    current_user: User = Depends(require_admin)
+):
+    """
+    Register a public HTTPS URL as the Telegram webhook (Admin only).
+    Example webhook_url: https://yourdomain.com/api/telegram/webhook
+    """
+    token = settings.TELEGRAM_BOT_TOKEN
+    if not token:
+        raise HTTPException(status_code=400, detail="TELEGRAM_BOT_TOKEN is not configured.")
+    try:
+        res = httpx.post(
+            f"https://api.telegram.org/bot{token}/setWebhook",
+            json={"url": webhook_url},
+            timeout=10
+        )
+        return res.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@api_router.get("/telegram/webhook-info")
+def get_telegram_webhook_info(current_user: User = Depends(require_admin)):
+    """Check the currently registered Telegram webhook URL (Admin only)."""
+    token = settings.TELEGRAM_BOT_TOKEN
+    if not token:
+        raise HTTPException(status_code=400, detail="TELEGRAM_BOT_TOKEN is not configured.")
+    try:
+        res = httpx.get(f"https://api.telegram.org/bot{token}/getWebhookInfo", timeout=10)
+        return res.json()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ----------------------------------------------------
+# 9. TELEMETRY PROMETHEUS METRICS
 # ----------------------------------------------------
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response

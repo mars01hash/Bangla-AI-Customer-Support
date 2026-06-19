@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Embedding
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/LaBSE"
 
+    # Telegram Bot
+    TELEGRAM_BOT_TOKEN: str = ""  # Set in .env: TELEGRAM_BOT_TOKEN=123456:ABC-...
+
     # API Config
     HOST: str = "0.0.0.0"
     PORT: int = 8000

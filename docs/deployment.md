@@ -1,61 +1,183 @@
-# Deployment and User Operations Guide
+# Deployment and Operations Guide
 
-This document describes how to deploy the platform stack in production-like environments and outlines a operational guide for support agents and administrator roles.
+This document covers production deployment configurations and the operational workflow for agents and administrators.
+
+---
+
+## Environment Variables
+
+Create a `.env` file in the repository root (or set these in your container/Kubernetes environment). All values shown are the built-in defaults.
+
+```env
+# Security
+JWT_SECRET=supersecretjwtsecretkeychangeinproduction123456789
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+ADMIN_INITIAL_PASSWORD=adminpassword123
+
+# Database
+# SQLite (dev):
+DATABASE_URL=sqlite:///./support_platform.db
+# PostgreSQL (production):
+# DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<dbname>
+
+# ChromaDB
+CHROMA_PERSIST_DIRECTORY=./chroma_db
+
+# LLM Provider — set to "mock" for heuristic-only mode
+LLM_PROVIDER=mock          # mock | openai | groq | huggingface
+LLM_API_KEY=mock-key
+LLM_MODEL_NAME=gpt-4o-mini
+
+# Embeddings
+EMBEDDING_MODEL_NAME=sentence-transformers/LaBSE
+
+# Server
+HOST=0.0.0.0
+PORT=8090
+DEBUG=true
+```
+
+> **Important:** Always replace `JWT_SECRET` and `ADMIN_INITIAL_PASSWORD` with strong random values before any public-facing deployment.
 
 ---
 
 ## Production Deployment Checklist
 
-### 1. Database Scaling (PostgreSQL)
-For production, avoid sqlite file paths. Update the database URL target in `.env` to point to a high-availability PostgreSQL cluster:
-`DATABASE_URL=postgresql://<DB_USER>:<DB_PASSWORD>@<DB_HOST>:<DB_PORT>/<DB_NAME>`
+### 1. Database
 
-### 2. High-Performance Model Serving (vLLM / Triton)
-Instead of local CPU sentence-transformers or LangGraph mocks:
-1. Spin up an instance of **vLLM** or **TensorFlow Serving** hosting Qwen-3 or Llama-3.
-2. In the `.env` configuration, update the LLM provider environment variables:
-   ```env
-   LLM_PROVIDER=openai  # vLLM is OpenAI API-compatible
-   LLM_API_KEY=your-vllm-token
-   LLM_MODEL_NAME=Qwen/Qwen1.5-7B-Chat
-   ```
+Switch from SQLite to a PostgreSQL cluster:
+
+```env
+DATABASE_URL=postgresql://support_user:strongpassword@db-host:5432/support_db
+```
+
+The application uses SQLAlchemy and requires no schema migrations — `Base.metadata.create_all()` runs on startup.
+
+### 2. LLM Provider
+
+To use a real LLM instead of heuristic fallbacks, set `LLM_PROVIDER` to one of the supported values:
+
+| Provider       | `LLM_PROVIDER` | `LLM_API_KEY`        | `LLM_MODEL_NAME` example        |
+|----------------|----------------|----------------------|---------------------------------|
+| OpenAI         | `openai`       | OpenAI API key       | `gpt-4o-mini`                   |
+| Groq           | `groq`         | Groq API key         | `llama-3.1-8b-instant`          |
+| HuggingFace    | `huggingface`  | HF access token      | `google/flan-t5-large`          |
+| vLLM (local)   | `openai`       | any string           | your hosted model name          |
+
+vLLM exposes an OpenAI-compatible endpoint — point `LLM_API_KEY` at your vLLM token and override the base URL if needed.
+
+Non-200 responses (rate limits, auth failures, server errors) from all providers are logged at `ERROR` level in the backend logs. Monitor these to detect quota exhaustion.
+
+### 3. Embedding Model
+
+The default `LaBSE` model is downloaded from HuggingFace Hub on first startup. To avoid cold-start delays in production, pre-download and mount the model:
+
+```bash
+python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/LaBSE')"
+```
+
+Set `HF_TOKEN` to increase HuggingFace Hub rate limits:
+```env
+HF_TOKEN=hf_your_token_here
+```
+
+### 4. Secret Rotation
+
+- Rotate `JWT_SECRET` and re-issue tokens to all active sessions.
+- Store secrets in a secrets manager (AWS Secrets Manager, Vault, Kubernetes Secrets) rather than plain `.env` files in production.
+
+### 5. Frontend API URL
+
+The React frontend currently hardcodes `http://localhost:8090` as the backend URL. For deployments on a different host or port, update the fetch URLs in:
+
+- `frontend/src/pages/CustomerChat.jsx` — `/api/chat`, `/api/voice/stt`, `/api/voice/tts`, `/api/feedback`
+- `frontend/src/pages/Dashboard.jsx` — analytics and ticket endpoints
+
+A recommended pattern is to set `VITE_API_BASE_URL` in a `.env` file at the frontend root and reference it via `import.meta.env.VITE_API_BASE_URL`.
 
 ---
 
-## Telemetry & Logging Setup
+## Docker Compose
 
-The docker-compose setup spins up Prometheus and Grafana automatically.
+Starts the full stack (backend, frontend, PostgreSQL, Prometheus, Grafana):
 
-### 1. Prometheus Telemetry
-Prometheus scrapes the API metrics endpoint `/api/metrics` every 15 seconds.
-- Access the web UI at `http://localhost:9090`.
-- Verify the API target status by navigating to **Status -> Targets**. The `customer_support_backend` endpoint should show **UP**.
+```bash
+cd deployment
+docker-compose up --build -d
+```
 
-### 2. Grafana Dashboards
-- Access Grafana at `http://localhost:3000`.
-- Credentials: `admin` / `admin`.
-- Click **Data Sources** and add a Prometheus data source pointing to `http://prometheus:9090`.
-- Build custom telemetry panels graphing request rates, database queries, and response latencies.
+| Service              | URL                          |
+|----------------------|------------------------------|
+| Frontend             | `http://localhost`           |
+| Backend API + Docs   | `http://localhost:8090/docs` |
+| Prometheus           | `http://localhost:9090`      |
+| Grafana              | `http://localhost:3000`      |
+
+---
+
+## Telemetry Setup
+
+### Prometheus
+
+Prometheus scrapes `/api/metrics` every 15 seconds (configured in `deployment/prometheus.yml`).
+
+1. Open `http://localhost:9090`.
+2. Navigate to **Status → Targets** and verify `customer_support_backend` shows **UP**.
+
+### Grafana
+
+1. Open `http://localhost:3000` (credentials: `admin` / `admin`).
+2. Go to **Configuration → Data Sources → Add data source → Prometheus**.
+3. Set the URL to `http://prometheus:9090` and click **Save & Test**.
+4. Build panels for request rate, response latency, ticket creation rate, and sentiment distribution.
 
 ---
 
 ## User Operations Guide
 
-### A. Customer Portals
-1. Navigate to the landing domain `http://localhost:5173`.
-2. Interact with the chat bot using Bangla or English keywords.
-3. Use the **Mic** button to test speech-to-text inputs.
-4. If the conversation requires custom support or displays negative sentiment, notice the **Ticket Escalated** card appears instantly on the left menu.
-5. Provide helpfulness rating feedback at the end of the conversation.
+### A. Customer Portal
 
-### B. Support Agent Dashboard
-1. Click the **Agent Portal** option in the top navigation bar.
-2. Log in using `agent@example.com` / `agentpassword123`.
-3. View the customer queue on the **Open Tickets** tab.
-4. Click **Start Working** to assign a ticket to yourself, changing its status to `In Progress`.
-5. Once resolved, click the green check mark to finalize the issue and remove it from the active queue.
+1. Navigate to `http://localhost:5173` (or your deployed domain).
+2. Type a question in Bangla, English, or Banglish in the chat input and press **Enter** or click **Send**.
+   - The input and Send button are disabled while a response is loading to prevent duplicate submissions.
+3. Click the **Speak** button to dictate a question using your microphone. The browser captures 2 seconds of audio via the `MediaRecorder` API and sends it to the STT endpoint. The transcription populates the input field — review it and press **Send**.
+4. Click the **Speaker** icon on any bot message to hear it read aloud (TTS).
+5. If the system cannot resolve your query automatically (low knowledge-base confidence or highly negative sentiment), a **Ticket Escalated** card appears in the left panel with the assigned ticket ID.
+6. At the end of a conversation, rate the response with the thumbs-up / thumbs-down widget.
 
-### C. Administrator Configurations
-1. Log in using `admin@example.com` / `adminpassword123`.
-2. Inspect the **Insights & Analytics** tab to verify conversation volume and sentiment distribution trends.
-3. Open the **Seed Knowledge Base** tab. Drag-and-drop a corporate PDF guide or FAQ CSV and click **Ingest File** to dynamically load semantic embeddings into the ChromaDB vector store.
+### B. Support Agent Workflow
+
+1. Open the **Agent Portal** link in the top navigation bar.
+2. Log in with `agent@example.com` / `agentpassword123` (or your own agent credentials).
+3. On the **Open Tickets** tab, the queue shows all unresolved tickets ordered by creation time with priority badges.
+4. Click **Start Working** on a ticket to assign it to yourself and change its status to `In Progress`.
+5. After resolving the issue, click the green check to set status to `Resolved` and remove it from the active queue.
+
+### C. Administrator Tasks
+
+1. Log in with `admin@example.com` / `adminpassword123`.
+2. **Insights & Analytics** tab: review conversation volume, resolution rate, average satisfaction score, and language/sentiment distribution trends.
+3. **Seed Knowledge Base** tab: drag-and-drop a corporate PDF, FAQ CSV, or text document and click **Ingest File**. The pipeline chunks the file, embeds each chunk with LaBSE, and stores vectors in ChromaDB. New documents are immediately searchable by the FAQ agent.
+4. **Ticket Management** tab: filter by status or priority, reassign tickets to other agents, and close resolved issues.
+
+---
+
+## Kubernetes
+
+```bash
+cd deployment/k8s
+kubectl apply -f db-deployment.yaml
+kubectl apply -f backend-deployment.yaml
+kubectl apply -f frontend-deployment.yaml
+kubectl apply -f ingress.yaml
+```
+
+With Helm:
+
+```bash
+cd deployment/helm
+helm install bangla-support ./
+```
+
+Configure the backend `PORT` and database URL via `values.yaml` or `--set` overrides before deploying.

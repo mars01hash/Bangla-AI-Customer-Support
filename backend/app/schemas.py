@@ -114,6 +114,33 @@ class FeedbackResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# --- Order Schemas ---
+class OrderCreate(BaseModel):
+    customer_name: str
+    customer_email: EmailStr
+    items: List[str]
+    total_amount: float
+    estimated_delivery: Optional[str] = None
+
+class OrderUpdate(BaseModel):
+    status: Optional[str] = None
+    estimated_delivery: Optional[str] = None
+
+class OrderResponse(BaseModel):
+    id: int
+    order_id: str
+    customer_name: str
+    customer_email: str
+    status: str
+    items: Optional[str] = None
+    total_amount: Optional[float] = None
+    estimated_delivery: Optional[str] = None
+    created_at: datetime.datetime
+    updated_at: datetime.datetime
+
+    model_config = {"from_attributes": True}
+
+
 # --- Document Schemas ---
 class KnowledgeDocumentResponse(BaseModel):
     id: int

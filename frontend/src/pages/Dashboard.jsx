@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Users, Ticket, Heart, Clock, Upload, ArrowUpRight, 
-  CheckCircle, RefreshCw, Filter, FileText, Check, AlertTriangle 
+import {
+  Users, Ticket, Heart, Clock, Upload, ArrowUpRight,
+  CheckCircle, RefreshCw, Filter, FileText, Check, AlertTriangle,
+  ShoppingBag, Plus, X, Package
 } from 'lucide-react'
 import { 
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, 
@@ -9,7 +10,7 @@ import {
 } from 'recharts'
 
 function Dashboard({ token, role }) {
-  const [activeTab, setActiveTab] = useState('tickets') // 'tickets', 'analytics', 'upload'
+  const [activeTab, setActiveTab] = useState('tickets') // 'tickets', 'analytics', 'upload', 'orders'
   
   // Analytics State
   const [summary, setSummary] = useState({
@@ -39,6 +40,15 @@ function Dashboard({ token, role }) {
   const [uploadStatus, setUploadStatus] = useState('')
   const [uploadLoading, setUploadLoading] = useState(false)
   const [chunksCreated, setChunksCreated] = useState(null)
+
+  // Orders State
+  const [orders, setOrders] = useState([])
+  const [orderStatusFilter, setOrderStatusFilter] = useState('')
+  const [showCreateOrder, setShowCreateOrder] = useState(false)
+  const [newOrder, setNewOrder] = useState({
+    customer_name: '', customer_email: '', items: '', total_amount: '', estimated_delivery: ''
+  })
+  const [orderFormError, setOrderFormError] = useState('')
   
   // Fetch telemetry and ticket entries
   const fetchTelemetry = async () => {
@@ -80,10 +90,80 @@ function Dashboard({ token, role }) {
     }
   }
 
+  const fetchOrders = async () => {
+    try {
+      const headers = { 'Authorization': `Bearer ${token}` }
+      let url = 'http://localhost:8090/api/orders'
+      if (orderStatusFilter) url += `?status=${orderStatusFilter}`
+      const res = await fetch(url, { headers })
+      if (res.ok) setOrders(await res.json())
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    try {
+      await fetch(`http://localhost:8090/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      })
+      fetchOrders()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleCreateOrder = async (e) => {
+    e.preventDefault()
+    setOrderFormError('')
+    try {
+      const payload = {
+        customer_name: newOrder.customer_name,
+        customer_email: newOrder.customer_email,
+        items: newOrder.items.split(',').map(s => s.trim()).filter(Boolean),
+        total_amount: parseFloat(newOrder.total_amount) || 0,
+        estimated_delivery: newOrder.estimated_delivery || null
+      }
+      const res = await fetch('http://localhost:8090/api/orders', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.detail || 'Failed to create order')
+      }
+      setNewOrder({ customer_name: '', customer_email: '', items: '', total_amount: '', estimated_delivery: '' })
+      setShowCreateOrder(false)
+      fetchOrders()
+    } catch (err) {
+      setOrderFormError(err.message)
+    }
+  }
+
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm(`Delete order ${orderId}?`)) return
+    try {
+      await fetch(`http://localhost:8090/api/orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      fetchOrders()
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
   useEffect(() => {
     fetchTelemetry()
     fetchTickets()
   }, [token, statusFilter, priorityFilter])
+
+  useEffect(() => {
+    if (activeTab === 'orders') fetchOrders()
+  }, [token, activeTab, orderStatusFilter])
 
   // Update ticket details (resolve/assign)
   const handleUpdateTicket = async (ticketId, updatePayload) => {
@@ -170,6 +250,15 @@ function Dashboard({ token, role }) {
             Insights & Analytics
           </button>
           
+          <button
+            onClick={() => setActiveTab('orders')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition ${
+              activeTab === 'orders' ? 'bg-accentPurple text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Orders ({orders.length})
+          </button>
+
           {role === 'admin' && (
             <button
               onClick={() => setActiveTab('upload')}
@@ -461,7 +550,181 @@ function Dashboard({ token, role }) {
         </div>
       )}
 
-      {/* --- Tab C: RAG Document Seeder Ingestion --- */}
+      {/* --- Tab C: Order Management --- */}
+      {activeTab === 'orders' && (
+        <div className="glass-panel rounded-2xl p-6 shadow-xl space-y-5">
+          {/* Header row */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+              <ShoppingBag size={18} className="text-accentPurple" /> Order Management
+            </h3>
+            <div className="flex gap-3 flex-wrap">
+              <select
+                value={orderStatusFilter}
+                onChange={(e) => setOrderStatusFilter(e.target.value)}
+                className="bg-slate-900 border border-slate-800 rounded-lg text-xs py-2 px-3 outline-none text-slate-300 focus:border-accentPurple"
+              >
+                <option value="">All Statuses</option>
+                <option value="processing">Processing</option>
+                <option value="shipped">Shipped</option>
+                <option value="out_for_delivery">Out for Delivery</option>
+                <option value="delivered">Delivered</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <button
+                onClick={() => { setShowCreateOrder(v => !v); setOrderFormError('') }}
+                className="flex items-center gap-2 bg-accentPurple/10 hover:bg-accentPurple text-accentPurple hover:text-white border border-accentPurple/30 px-3 py-2 rounded-lg text-xs font-semibold transition"
+              >
+                <Plus size={14} /> New Order
+              </button>
+            </div>
+          </div>
+
+          {/* Create Order Form */}
+          {showCreateOrder && (
+            <form onSubmit={handleCreateOrder} className="bg-slate-900/60 border border-slate-700 rounded-xl p-5 space-y-4">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2"><Package size={14} /> Create New Order</h4>
+              {orderFormError && (
+                <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">{orderFormError}</p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Customer Name</label>
+                  <input
+                    required
+                    value={newOrder.customer_name}
+                    onChange={e => setNewOrder(p => ({ ...p, customer_name: e.target.value }))}
+                    placeholder="e.g. Tahmid Hasan"
+                    className="w-full bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-accentPurple"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Customer Email</label>
+                  <input
+                    required type="email"
+                    value={newOrder.customer_email}
+                    onChange={e => setNewOrder(p => ({ ...p, customer_email: e.target.value }))}
+                    placeholder="e.g. tahmid@example.com"
+                    className="w-full bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-accentPurple"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Items (comma-separated)</label>
+                  <input
+                    required
+                    value={newOrder.items}
+                    onChange={e => setNewOrder(p => ({ ...p, items: e.target.value }))}
+                    placeholder="e.g. Blue Panjabi, Prayer Cap"
+                    className="w-full bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-accentPurple"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block">Total Amount (BDT)</label>
+                  <input
+                    required type="number" min="0" step="0.01"
+                    value={newOrder.total_amount}
+                    onChange={e => setNewOrder(p => ({ ...p, total_amount: e.target.value }))}
+                    placeholder="e.g. 1250.00"
+                    className="w-full bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-accentPurple"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-slate-400 mb-1 block">Estimated Delivery (optional)</label>
+                  <input
+                    type="date"
+                    value={newOrder.estimated_delivery}
+                    onChange={e => setNewOrder(p => ({ ...p, estimated_delivery: e.target.value }))}
+                    className="w-full bg-slate-950/60 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-accentPurple"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-3 justify-end">
+                <button type="button" onClick={() => setShowCreateOrder(false)} className="text-xs text-slate-400 hover:text-white px-3 py-2 transition">Cancel</button>
+                <button type="submit" className="bg-accentPurple hover:bg-accentPurple/80 text-white text-xs font-semibold px-4 py-2 rounded-lg transition">Create Order</button>
+              </div>
+            </form>
+          )}
+
+          {/* Orders Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase tracking-wider">
+                  <th className="py-4">Order ID</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Est. Delivery</th>
+                  <th className="text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800 text-sm">
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" className="py-8 text-center text-slate-500">No orders found.</td>
+                  </tr>
+                ) : orders.map(order => {
+                  const statusColors = {
+                    processing: 'bg-blue-500/10 text-blue-400',
+                    shipped: 'bg-indigo-500/10 text-indigo-400',
+                    out_for_delivery: 'bg-amber-500/10 text-amber-400',
+                    delivered: 'bg-emerald-500/10 text-emerald-400',
+                    cancelled: 'bg-rose-500/10 text-rose-400',
+                  }
+                  let itemList = []
+                  try { itemList = JSON.parse(order.items || '[]') } catch {}
+                  return (
+                    <tr key={order.id} className="hover:bg-slate-900/30 transition duration-150">
+                      <td className="py-4 font-mono font-bold text-accentPurple">{order.order_id}</td>
+                      <td>
+                        <p className="font-semibold text-slate-200">{order.customer_name}</p>
+                        <p className="text-xs text-slate-500">{order.customer_email}</p>
+                      </td>
+                      <td className="max-w-[180px]">
+                        <p className="text-xs text-slate-300 truncate" title={itemList.join(', ')}>{itemList.join(', ') || '—'}</p>
+                      </td>
+                      <td className="font-mono text-slate-300">৳{order.total_amount?.toFixed(2) ?? '—'}</td>
+                      <td>
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize ${statusColors[order.status] || 'bg-slate-800 text-slate-400'}`}>
+                          {order.status.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="text-xs text-slate-400">{order.estimated_delivery || '—'}</td>
+                      <td className="text-right">
+                        <div className="flex gap-2 justify-end items-center">
+                          <select
+                            value={order.status}
+                            onChange={e => handleUpdateOrderStatus(order.order_id, e.target.value)}
+                            className="bg-slate-900 border border-slate-700 rounded-lg text-[10px] py-1 px-2 text-slate-300 outline-none focus:border-accentPurple"
+                          >
+                            <option value="processing">Processing</option>
+                            <option value="shipped">Shipped</option>
+                            <option value="out_for_delivery">Out for Delivery</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                          {role === 'admin' && (
+                            <button
+                              onClick={() => handleDeleteOrder(order.order_id)}
+                              className="bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/20 p-1.5 rounded-lg transition"
+                              title="Delete Order"
+                            >
+                              <X size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* --- Tab D: RAG Document Seeder Ingestion --- */}
       {activeTab === 'upload' && (
         <div className="max-w-2xl mx-auto glass-panel rounded-2xl p-8 space-y-6">
           <div className="text-center">

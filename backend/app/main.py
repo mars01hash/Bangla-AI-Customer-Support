@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.models import User
+from app.models import User, Order
 from app.auth import get_password_hash
 from app.api.endpoints import api_router
 from app.rag.vectorstore import vector_store
@@ -66,6 +66,37 @@ def seed_database():
         db.commit()
     except Exception as e:
         logger.error(f"Error seeding user accounts: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+    # Seed sample orders so the chatbot can demonstrate real lookups
+    db = SessionLocal()
+    try:
+        if db.query(Order).count() == 0:
+            import json
+            sample_orders = [
+                Order(order_id="ORD-A1B2C", customer_name="Tahmid Hasan", customer_email="tahmid@example.com",
+                      status="shipped", items=json.dumps(["Blue Panjabi", "Prayer Cap"]),
+                      total_amount=1250.00, estimated_delivery="2026-06-22"),
+                Order(order_id="ORD-D3E4F", customer_name="Nusrat Jahan", customer_email="nusrat@example.com",
+                      status="processing", items=json.dumps(["Saree (Red)", "Blouse Piece"]),
+                      total_amount=2800.00, estimated_delivery="2026-06-25"),
+                Order(order_id="ORD-G5H6I", customer_name="Rahim Uddin", customer_email="rahim@example.com",
+                      status="delivered", items=json.dumps(["Laptop Bag", "USB Hub"]),
+                      total_amount=3500.00, estimated_delivery="2026-06-18"),
+                Order(order_id="ORD-J7K8L", customer_name="Sumaiya Akter", customer_email="sumaiya@example.com",
+                      status="out_for_delivery", items=json.dumps(["Kurta Set"]),
+                      total_amount=950.00, estimated_delivery="2026-06-19"),
+                Order(order_id="ORD-M9N0P", customer_name="Farhan Islam", customer_email="farhan@example.com",
+                      status="cancelled", items=json.dumps(["Sneakers (Size 42)"]),
+                      total_amount=4200.00, estimated_delivery=None),
+            ]
+            db.add_all(sample_orders)
+            db.commit()
+            logger.info("Sample orders seeded successfully.")
+    except Exception as e:
+        logger.error(f"Error seeding sample orders: {e}")
         db.rollback()
     finally:
         db.close()

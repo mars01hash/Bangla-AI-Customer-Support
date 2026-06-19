@@ -1,44 +1,124 @@
-Here are the two ways you can run the application:
+========================================================
+  Bangla AI Customer Support Platform — Run Guide
+========================================================
 
-Option A: Using Docker (Recommended - Runs the Full Stack)
-This runs the Frontend, Backend, PostgreSQL database, Prometheus, and Grafana in containerized harmony.
+Option A: Using Docker (Recommended — Full Stack)
+--------------------------------------------------
+Runs Frontend, Backend, PostgreSQL, Prometheus, and Grafana
+in containers with a single command.
 
-Open your terminal and run:
-powershell
-cd deployment
-docker-compose up --build
-Once the build finishes, access the services at:
-Frontend App: http://localhost
-API Swagger Docs: http://localhost:8000/docs
-Prometheus Telemetry: http://localhost:9090
-Grafana Visualization: http://localhost:3000 (User: admin / Pass: admin)
+  cd deployment
+  docker-compose up --build
 
-Option B: Running Locally (For Active Development)
+Services once running:
+  Frontend App          http://localhost
+  API Swagger Docs      http://localhost:8090/docs
+  Prometheus Telemetry  http://localhost:9090
+  Grafana Dashboards    http://localhost:3000  (admin / admin)
+
+
+Option B: Running Locally (Active Development)
+----------------------------------------------
+
 1. Start the FastAPI Backend
-powershell
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python app/main.py
 
-The API server will run at http://localhost:8000.
+  cd backend
+  python -m venv venv
+  venv\Scripts\activate
+  pip install -r requirements.txt
+  uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
+
+  API runs at http://localhost:8090
+  Swagger docs at http://localhost:8090/docs
+
+  NOTE: The frontend hardcodes port 8090. Always start the
+        backend on port 8090 when running locally.
 
 2. Start the React Frontend
-Open a new terminal window:
 
-powershell
-cd frontend
-npm install
-npm run dev
+  cd frontend
+  npm install
+  npm run dev
 
-The Vite development server will launch at http://localhost:5173.
+  Vite dev server runs at http://localhost:5173
+
 
 Pre-seeded Accounts
-Customer Chat: Access it directly on the landing page (no login required).
-Agent Dashboard: Click Agent Portal in the navigation bar and log in:
-Email: agent@example.com
-Password: agentpassword123
-Admin Dashboard: Log in using the admin account:
-Email: admin@example.com
-Password: adminpassword123
+-------------------
+  Customer Chat    No login required — open http://localhost:5173
+  Agent Portal     agent@example.com   / agentpassword123
+  Admin Dashboard  admin@example.com   / adminpassword123
+
+
+========================================================
+  Telegram Bot Setup
+========================================================
+
+The platform includes a Telegram bot so customers can get
+support directly through Telegram using the same AI agent.
+
+Step 1 — Create a bot and get your token
+  - Open Telegram and search for @BotFather
+  - Send: /newbot
+  - Follow the prompts (choose a name and username)
+  - Copy the token shown (format: 123456789:ABC-Def...)
+
+Step 2 — Add the token to your .env file
+  Open .env in the project root and set:
+
+    TELEGRAM_BOT_TOKEN=123456789:ABC-your-token-here
+
+Step 3 — Choose a mode: Polling (local) or Webhook (production)
+
+  --- Mode A: Polling (works on localhost, no public URL needed) ---
+
+  Open a new terminal after the backend is running:
+
+    cd backend
+    venv\Scripts\activate
+    python telegram_poll.py
+
+  The bot will start polling Telegram for messages and forward
+  them to http://localhost:8090/api/chat automatically.
+  Press Ctrl+C to stop.
+
+  --- Mode B: Webhook (production / VPS / ngrok) ---
+
+  Webhooks require a public HTTPS URL. Two options:
+
+  Option 1 — ngrok (free, for testing from localhost):
+
+    ngrok http 8090
+
+    Copy the https URL ngrok gives you, then run:
+
+    curl -X POST http://localhost:8090/api/telegram/set-webhook \
+      -H "Authorization: Bearer <admin-jwt-token>" \
+      -d "webhook_url=https://abc123.ngrok.io/api/telegram/webhook"
+
+  Option 2 — VPS / cloud deployment:
+
+    Deploy the backend to a server with a domain (e.g. via Docker).
+    Then register the webhook:
+
+    curl -X POST https://yourdomain.com/api/telegram/set-webhook \
+      -H "Authorization: Bearer <admin-jwt-token>" \
+      -d "webhook_url=https://yourdomain.com/api/telegram/webhook"
+
+  Check registered webhook status (Admin only):
+
+    curl -H "Authorization: Bearer <admin-jwt-token>" \
+      http://localhost:8090/api/telegram/webhook-info
+
+Step 4 — Test it
+  Open Telegram, find your bot by its username, and send /start
+  Then try asking: "Where is my order ORD-A1B2C?"
+
+  The bot supports Bangla and English and uses the same AI agent
+  as the web chat. Conversations are saved in the database and
+  visible in the Agent Dashboard.
+
+Notes:
+  - Each Telegram user gets their own session (telegram-<chat_id>)
+  - Escalated tickets are created automatically and shown in the dashboard
+  - Do not run polling and webhook at the same time for the same bot token

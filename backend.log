@@ -1,0 +1,657 @@
+INFO:     Will watch for changes in these directories: ['H:\\nlp-customer-support-bangla\\backend']
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4734.11it/s]
+2026-06-19 11:53:10,797 - app.main - INFO - Initializing database schemas...
+2026-06-19 11:53:10,815 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 11.97it/s]
+2026-06-19 11:53:10,920 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Uvicorn running on http://0.0.0.0:8090 (Press CTRL+C to quit)
+INFO:     Started reloader process [7588] using WatchFiles
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 5954.42it/s]
+2026-06-19 11:53:31,687 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 11:53:31,723 - app.main - INFO - Initializing database schemas...
+2026-06-19 11:53:31,739 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 13.25it/s]
+2026-06-19 11:53:31,851 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [15988]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 11:53:32,046 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 11:53:49,671 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: faq
+2026-06-19 11:53:49,671 - app.agents.graph - INFO - Routing edge from detector: category is 'faq'
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 19.05it/s]
+2026-06-19 11:53:49,740 - app.agents.nodes - INFO - RAG confidence (0.24) too low. Redirecting to Escalation.
+2026-06-19 11:53:49,740 - app.agents.graph - INFO - Routing FAQ node -> Escalation node (low confidence)
+2026-06-19 11:53:49,760 - watchfiles.main - INFO - 3 changes detected
+2026-06-19 11:53:49,825 - app.agents.nodes - INFO - Support ticket TKT-A8EC0BA9 automatically created in DB.
+INFO:     127.0.0.1:56703 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 11:53:50,112 - watchfiles.main - INFO - 4 changes detected
+INFO:     127.0.0.1:56706 - "GET / HTTP/1.1" 200 OK
+2026-06-19 11:54:03,472 - watchfiles.main - INFO - 1 change detected
+2026-06-19 11:54:20,486 - watchfiles.main - INFO - 1 change detected
+2026-06-19 11:54:20,513 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: greeting
+2026-06-19 11:54:20,514 - app.agents.graph - INFO - Routing edge from detector: category is 'greeting'
+INFO:     127.0.0.1:56719 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 11:54:20,840 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 11:54:20,987 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: order
+2026-06-19 11:54:20,987 - app.agents.graph - INFO - Routing edge from detector: category is 'order'
+INFO:     127.0.0.1:56721 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 11:54:21,198 - watchfiles.main - INFO - 3 changes detected
+2026-06-19 11:54:54,662 - watchfiles.main - INFO - 1 change detected
+2026-06-19 11:54:54,679 - app.agents.nodes - INFO - Node [Detector] - Lang: bn, Sentiment: neutral, Category: order
+2026-06-19 11:54:54,680 - app.agents.graph - INFO - Routing edge from detector: category is 'order'
+INFO:     127.0.0.1:56749 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 11:54:55,029 - watchfiles.main - INFO - 4 changes detected
+INFO:     127.0.0.1:56749 - "OPTIONS /api/feedback HTTP/1.1" 200 OK
+2026-06-19 11:54:57,966 - watchfiles.main - INFO - 1 change detected
+INFO:     127.0.0.1:56749 - "POST /api/feedback HTTP/1.1" 200 OK
+2026-06-19 11:54:58,318 - watchfiles.main - INFO - 2 changes detected
+2026-06-19 11:55:04,617 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: faq
+2026-06-19 11:55:04,617 - app.agents.graph - INFO - Routing edge from detector: category is 'faq'
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 26.88it/s]
+2026-06-19 11:55:04,670 - app.agents.nodes - INFO - RAG confidence (0.23) too low. Redirecting to Escalation.
+2026-06-19 11:55:04,670 - app.agents.graph - INFO - Routing FAQ node -> Escalation node (low confidence)
+2026-06-19 11:55:04,743 - watchfiles.main - INFO - 1 change detected
+2026-06-19 11:55:04,754 - app.agents.nodes - INFO - Support ticket TKT-7F8AAED3 automatically created in DB.
+INFO:     127.0.0.1:56750 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 11:55:05,104 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 11:59:32,194 - app.agents.nodes - INFO - Node [Detector] - Lang: bn, Sentiment: neutral, Category: faq
+2026-06-19 11:59:32,194 - app.agents.graph - INFO - Routing edge from detector: category is 'faq'
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 12.90it/s]
+2026-06-19 11:59:32,289 - app.agents.nodes - INFO - RAG confidence (0.23) too low. Redirecting to Escalation.
+2026-06-19 11:59:32,289 - app.agents.graph - INFO - Routing FAQ node -> Escalation node (low confidence)
+2026-06-19 11:59:32,361 - app.agents.nodes - INFO - Support ticket TKT-E13E5D9A automatically created in DB.
+INFO:     127.0.0.1:56807 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 11:59:32,462 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:56808 - "POST /api/voice/tts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56824 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56824 - "OPTIONS /api/analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56824 - "OPTIONS /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56825 - "OPTIONS /api/analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56824 - "OPTIONS /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56825 - "GET /api/analytics/summary HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56825 - "GET /api/analytics/summary HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56825 - "OPTIONS /api/analytics/charts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56824 - "GET /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56825 - "GET /api/analytics/charts HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56825 - "GET /api/analytics/charts HTTP/1.1" 403 Forbidden
+INFO:     127.0.0.1:56824 - "GET /api/tickets HTTP/1.1" 200 OK
+2026-06-19 12:00:20,653 - app.agents.nodes - INFO - Node [Detector] - Lang: bn, Sentiment: neutral, Category: faq
+2026-06-19 12:00:20,653 - app.agents.graph - INFO - Routing edge from detector: category is 'faq'
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]2026-06-19 12:00:20,699 - watchfiles.main - INFO - 3 changes detected
+Batches: 100%|##########| 1/1 [00:00<00:00, 21.80it/s]
+2026-06-19 12:00:20,711 - app.agents.nodes - INFO - RAG confidence (0.23) too low. Redirecting to Escalation.
+2026-06-19 12:00:20,711 - app.agents.graph - INFO - Routing FAQ node -> Escalation node (low confidence)
+2026-06-19 12:00:20,788 - app.agents.nodes - INFO - Support ticket TKT-6993F877 automatically created in DB.
+INFO:     127.0.0.1:56834 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 12:00:21,064 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:56834 - "POST /api/voice/tts HTTP/1.1" 200 OK
+2026-06-19 12:00:58,279 - app.agents.nodes - INFO - Node [Detector] - Lang: bn, Sentiment: neutral, Category: order
+2026-06-19 12:00:58,279 - app.agents.graph - INFO - Routing edge from detector: category is 'order'
+2026-06-19 12:00:58,360 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:56880 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 12:00:58,725 - watchfiles.main - INFO - 2 changes detected
+INFO:     127.0.0.1:56880 - "POST /api/voice/tts HTTP/1.1" 200 OK
+2026-06-19 12:01:16,546 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: faq
+2026-06-19 12:01:16,546 - app.agents.graph - INFO - Routing edge from detector: category is 'faq'
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 24.38it/s]
+2026-06-19 12:01:16,594 - app.agents.nodes - INFO - RAG confidence (0.26) too low. Redirecting to Escalation.
+2026-06-19 12:01:16,594 - app.agents.graph - INFO - Routing FAQ node -> Escalation node (low confidence)
+2026-06-19 12:01:16,667 - app.agents.nodes - INFO - Support ticket TKT-B2178A47 automatically created in DB.
+2026-06-19 12:01:16,739 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:56881 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 12:01:17,092 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:56881 - "POST /api/voice/tts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56901 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56902 - "GET /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56901 - "GET /api/analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56902 - "GET /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56901 - "GET /api/analytics/summary HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56902 - "GET /api/analytics/charts HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56901 - "GET /api/analytics/charts HTTP/1.1" 200 OK
+2026-06-19 12:05:47,896 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\models.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [15988]
+2026-06-19 12:05:50,241 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 5135.81it/s]
+2026-06-19 12:06:09,656 - watchfiles.main - INFO - 3 changes detected
+2026-06-19 12:06:09,687 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:06:09,951 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]2026-06-19 12:06:10,021 - watchfiles.main - INFO - 3 changes detected
+Batches: 100%|##########| 1/1 [00:00<00:00, 14.31it/s]
+2026-06-19 12:06:10,052 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [5316]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:06:10,388 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 12:06:33,464 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:08:26,291 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\schemas.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [5316]
+2026-06-19 12:08:28,860 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 7959.97it/s]
+2026-06-19 12:08:47,346 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:08:47,406 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:08:47,434 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 14.64it/s]
+2026-06-19 12:08:47,534 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [12964]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:08:47,706 - watchfiles.main - INFO - 7 changes detected
+2026-06-19 12:09:02,658 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\api\endpoints.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [12964]
+2026-06-19 12:09:05,119 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 5729.37it/s]
+2026-06-19 12:09:25,540 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 12:09:25,547 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:09:25,557 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 11.82it/s]
+2026-06-19 12:09:25,666 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [14440]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:09:25,905 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 12:09:31,563 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\api\endpoints.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [14440]
+2026-06-19 12:09:33,890 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 5684.27it/s]
+2026-06-19 12:09:51,999 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:09:52,351 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\agents\nodes.py'. Reloading...
+ 2026-06-19 12:09:53,764 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:09:53,780 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 12.53it/s]
+2026-06-19 12:09:53,875 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [1984]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1984]
+2026-06-19 12:09:55,175 - watchfiles.main - INFO - 8 changes detected
+2026-06-19 12:09:56,805 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 6072.47it/s]
+2026-06-19 12:10:15,607 - watchfiles.main - INFO - 2 changes detected
+2026-06-19 12:10:15,749 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:10:15,765 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 14.44it/s]
+2026-06-19 12:10:15,881 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [8240]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:10:15,966 - watchfiles.main - INFO - 7 changes detected
+2026-06-19 12:11:47,349 - watchfiles.main - INFO - 1 change detected
+WARNING:  WatchFiles detected changes in 'app\agents\nodes.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [8240]
+Process SpawnProcess-7:
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\base_events.py", line 684, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 79, in serve
+    await self._serve(sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 86, in _serve
+    config.load()
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 481, in load
+    self.loaded_app = self.load_app()
+                      ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 415, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 994, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "H:\nlp-customer-support-bangla\backend\app\main.py", line 9, in <module>
+    from app.api.endpoints import api_router
+  File "H:\nlp-customer-support-bangla\backend\app\api\endpoints.py", line 28, in <module>
+    from app.agents.graph import support_graph
+  File "H:\nlp-customer-support-bangla\backend\app\agents\graph.py", line 4, in <module>
+    from app.agents.nodes import (
+  File "H:\nlp-customer-support-bangla\backend\app\agents\nodes.py", line 295
+    f"\u0986\u09aa\u09a8\u09be\u09b0 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 {order.order_id} \u09aa\u09be\u0993\u09af\u09bc\u09be \u0997\u09c7\u099b\u09c7\u0964
+    ^
+SyntaxError: unterminated f-string literal (detected at line 295)
+2026-06-19 12:12:59,018 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\main.py'. Reloading...
+ 2026-06-19 12:12:59,533 - watchfiles.main - INFO - 5 changes detected
+Process SpawnProcess-8:
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\base_events.py", line 684, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 79, in serve
+    await self._serve(sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 86, in _serve
+    config.load()
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 481, in load
+    self.loaded_app = self.load_app()
+                      ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 415, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 994, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "H:\nlp-customer-support-bangla\backend\app\main.py", line 9, in <module>
+    from app.api.endpoints import api_router
+  File "H:\nlp-customer-support-bangla\backend\app\api\endpoints.py", line 28, in <module>
+    from app.agents.graph import support_graph
+  File "H:\nlp-customer-support-bangla\backend\app\agents\graph.py", line 4, in <module>
+    from app.agents.nodes import (
+  File "H:\nlp-customer-support-bangla\backend\app\agents\nodes.py", line 295
+    f"\u0986\u09aa\u09a8\u09be\u09b0 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 {order.order_id} \u09aa\u09be\u0993\u09af\u09bc\u09be \u0997\u09c7\u099b\u09c7\u0964
+    ^
+SyntaxError: unterminated f-string literal (detected at line 295)
+2026-06-19 12:13:10,534 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\main.py'. Reloading...
+ 2026-06-19 12:13:10,992 - watchfiles.main - INFO - 5 changes detected
+Process SpawnProcess-9:
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\base_events.py", line 684, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 79, in serve
+    await self._serve(sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 86, in _serve
+    config.load()
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 481, in load
+    self.loaded_app = self.load_app()
+                      ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 415, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 994, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "H:\nlp-customer-support-bangla\backend\app\main.py", line 9, in <module>
+    from app.api.endpoints import api_router
+  File "H:\nlp-customer-support-bangla\backend\app\api\endpoints.py", line 28, in <module>
+    from app.agents.graph import support_graph
+  File "H:\nlp-customer-support-bangla\backend\app\agents\graph.py", line 4, in <module>
+    from app.agents.nodes import (
+  File "H:\nlp-customer-support-bangla\backend\app\agents\nodes.py", line 295
+    f"\u0986\u09aa\u09a8\u09be\u09b0 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 {order.order_id} \u09aa\u09be\u0993\u09af\u09bc\u09be \u0997\u09c7\u099b\u09c7\u0964
+    ^
+SyntaxError: unterminated f-string literal (detected at line 295)
+2026-06-19 12:15:22,546 - watchfiles.main - INFO - 1 change detected
+WARNING:  WatchFiles detected changes in 'app\agents\nodes.py'. Reloading...
+ Process SpawnProcess-10:
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\base_events.py", line 684, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 79, in serve
+    await self._serve(sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 86, in _serve
+    config.load()
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 481, in load
+    self.loaded_app = self.load_app()
+                      ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 415, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 994, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "H:\nlp-customer-support-bangla\backend\app\main.py", line 9, in <module>
+    from app.api.endpoints import api_router
+  File "H:\nlp-customer-support-bangla\backend\app\api\endpoints.py", line 28, in <module>
+    from app.agents.graph import support_graph
+  File "H:\nlp-customer-support-bangla\backend\app\agents\graph.py", line 4, in <module>
+    from app.agents.nodes import (
+  File "H:\nlp-customer-support-bangla\backend\app\agents\nodes.py", line 295
+    f"\u0986\u09aa\u09a8\u09be\u09b0 \u0985\u09b0\u09cd\u09a1\u09be\u09b0 {order.order_id} \u09aa\u09be\u0993\u09af\u09bc\u09be \u0997\u09c7\u099b\u09c7\u0964
+    ^
+SyntaxError: unterminated f-string literal (detected at line 295)
+2026-06-19 12:15:46,004 - watchfiles.main - INFO - 1 change detected
+WARNING:  WatchFiles detected changes in 'app\agents\nodes.py'. Reloading...
+ Process SpawnProcess-11:
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\base_events.py", line 684, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 79, in serve
+    await self._serve(sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 86, in _serve
+    config.load()
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 481, in load
+    self.loaded_app = self.load_app()
+                      ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 415, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 994, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "H:\nlp-customer-support-bangla\backend\app\main.py", line 9, in <module>
+    from app.api.endpoints import api_router
+  File "H:\nlp-customer-support-bangla\backend\app\api\endpoints.py", line 28, in <module>
+    from app.agents.graph import support_graph
+  File "H:\nlp-customer-support-bangla\backend\app\agents\graph.py", line 4, in <module>
+    from app.agents.nodes import (
+  File "H:\nlp-customer-support-bangla\backend\app\agents\nodes.py", line 294
+    if lang in ["bn", "mixed"]:
+    ^^
+IndentationError: expected an indented block after 'if' statement on line 293
+2026-06-19 12:16:22,714 - watchfiles.main - INFO - 1 change detected
+WARNING:  WatchFiles detected changes in 'app\agents\nodes.py'. Reloading...
+ 2026-06-19 12:16:24,808 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 5665.71it/s]
+2026-06-19 12:16:43,655 - watchfiles.main - INFO - 2 changes detected
+2026-06-19 12:16:43,727 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:16:43,839 - app.main - INFO - Sample orders seeded successfully.
+2026-06-19 12:16:43,839 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 13.25it/s]
+2026-06-19 12:16:43,936 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [2800]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:16:44,012 - watchfiles.main - INFO - 10 changes detected
+INFO:     127.0.0.1:57335 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57335 - "GET /api/orders HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57335 - "POST /api/orders HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:57335 - "POST /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57335 - "POST /api/feedback HTTP/1.1" 404 Not Found
+2026-06-19 12:22:08,831 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:57371 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57371 - "POST /api/auth/token HTTP/1.1" 200 OK
+2026-06-19 12:22:40,620 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: greeting
+2026-06-19 12:22:40,620 - app.agents.graph - INFO - Routing edge from detector: category is 'greeting'
+INFO:     127.0.0.1:57371 - "POST /api/chat HTTP/1.1" 200 OK
+2026-06-19 12:22:40,822 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: order
+2026-06-19 12:22:40,822 - app.agents.graph - INFO - Routing edge from detector: category is 'order'
+2026-06-19 12:22:40,867 - watchfiles.main - INFO - 3 changes detected
+INFO:     127.0.0.1:57371 - "POST /api/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57371 - "GET /api/orders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57371 - "POST /api/orders HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57371 - "PUT /api/orders/ORD-8200A HTTP/1.1" 200 OK
+2026-06-19 12:22:41,232 - watchfiles.main - INFO - 4 changes detected
+INFO:     127.0.0.1:57371 - "POST /api/tickets HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57371 - "POST /api/feedback HTTP/1.1" 200 OK
+2026-06-19 12:22:41,584 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 12:23:32,066 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:23:52,979 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\config.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2800]
+2026-06-19 12:23:55,006 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4654.70it/s]
+2026-06-19 12:24:15,084 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:24:15,165 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:24:15,186 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 12.41it/s]
+2026-06-19 12:24:15,297 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [6608]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:24:15,447 - watchfiles.main - INFO - 7 changes detected
+2026-06-19 12:25:01,369 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:25:01,735 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\api\endpoints.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [6608]
+2026-06-19 12:25:04,107 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4137.73it/s]
+Process SpawnProcess-14:
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 314, in _bootstrap
+    self.run()
+  File "C:\Program Files\Python312\Lib\multiprocessing\process.py", line 108, in run
+    self._target(*self._args, **self._kwargs)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\_subprocess.py", line 80, in subprocess_started
+    target(sockets=sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 75, in run
+    return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 194, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\asyncio\base_events.py", line 684, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 79, in serve
+    await self._serve(sockets)
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\server.py", line 86, in _serve
+    config.load()
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 481, in load
+    self.loaded_app = self.load_app()
+                      ^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\config.py", line 415, in load_app
+    return import_from_string(self.app)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "H:\nlp-customer-support-bangla\backend\venv\Lib\site-packages\uvicorn\importer.py", line 19, in import_from_string
+    module = importlib.import_module(module_str)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Program Files\Python312\Lib\importlib\__init__.py", line 90, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1331, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 935, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 994, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "H:\nlp-customer-support-bangla\backend\app\main.py", line 9, in <module>
+    from app.api.endpoints import api_router
+  File "H:\nlp-customer-support-bangla\backend\app\api\endpoints.py", line 729, in <module>
+    async def telegram_webhook(request: Request, db: Session = Depends(get_db)):
+                                        ^^^^^^^
+NameError: name 'Request' is not defined
+2026-06-19 12:25:23,826 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 12:25:30,915 - watchfiles.main - INFO - 5 changes detected
+WARNING:  WatchFiles detected changes in 'app\api\endpoints.py'. Reloading...
+ 2026-06-19 12:25:32,263 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 6635.55it/s]
+2026-06-19 12:25:48,503 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:25:48,867 - watchfiles.main - INFO - 4 changes detected
+WARNING:  WatchFiles detected changes in 'app\api\endpoints.py'. Reloading...
+ 2026-06-19 12:25:51,904 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:25:51,919 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 12.77it/s]
+2026-06-19 12:25:52,021 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [15872]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [15872]
+2026-06-19 12:25:53,304 - watchfiles.main - INFO - 8 changes detected
+2026-06-19 12:25:54,063 - watchfiles.main - INFO - 5 changes detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4889.70it/s]
+2026-06-19 12:26:13,830 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:26:13,862 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+2026-06-19 12:26:13,865 - watchfiles.main - INFO - 4 changes detected
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 10.31it/s]
+2026-06-19 12:26:14,011 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [4260]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:26:14,229 - watchfiles.main - INFO - 4 changes detected
+2026-06-19 12:26:27,299 - watchfiles.main - INFO - 3 changes detected
+WARNING:  WatchFiles detected changes in 'telegram_poll.py'. Reloading...
+ INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [4260]
+2026-06-19 12:26:29,050 - watchfiles.main - INFO - 1 change detected
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/199 [00:00<?, ?it/s]Loading weights: 100%|##########| 199/199 [00:00<00:00, 4022.59it/s]
+2026-06-19 12:26:49,942 - watchfiles.main - INFO - 3 changes detected
+2026-06-19 12:26:49,946 - app.main - INFO - Initializing database schemas...
+2026-06-19 12:26:49,968 - app.main - INFO - Checking and seeding Chroma vector base FAQs...
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00,  9.91it/s]Batches: 100%|##########| 1/1 [00:00<00:00,  9.91it/s]
+2026-06-19 12:26:50,117 - app.main - INFO - Vector database FAQ base already populated. Skipping seeding.
+INFO:     Started server process [5808]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+2026-06-19 12:26:50,309 - watchfiles.main - INFO - 4 changes detected
+INFO:     127.0.0.1:57543 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57543 - "GET / HTTP/1.1" 200 OK
+2026-06-19 12:27:18,740 - app.agents.nodes - INFO - Node [Detector] - Lang: en, Sentiment: neutral, Category: order
+2026-06-19 12:27:18,740 - app.agents.graph - INFO - Routing edge from detector: category is 'order'
+2026-06-19 12:27:18,834 - watchfiles.main - INFO - 3 changes detected
+2026-06-19 12:27:18,841 - app.api.endpoints - WARNING - TELEGRAM_BOT_TOKEN not set — cannot send Telegram reply.
+INFO:     127.0.0.1:57552 - "POST /api/telegram/webhook HTTP/1.1" 200 OK
+2026-06-19 12:27:19,190 - watchfiles.main - INFO - 1 change detected
+2026-06-19 12:27:33,877 - app.api.endpoints - WARNING - TELEGRAM_BOT_TOKEN not set — cannot send Telegram reply.
+INFO:     127.0.0.1:57555 - "POST /api/telegram/webhook HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57557 - "POST /api/auth/token HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57559 - "GET /api/tickets HTTP/1.1" 200 OK

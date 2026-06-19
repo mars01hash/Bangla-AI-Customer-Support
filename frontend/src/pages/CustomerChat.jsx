@@ -36,7 +36,6 @@ function CustomerChat() {
     if (!text) return
 
     setInputValue('')
-    setError('')
     setLoading(true)
 
     // Append User message locally
@@ -110,9 +109,6 @@ function CustomerChat() {
 
       const response = await fetch('http://localhost:8090/api/voice/tts', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token') || 'mock-token'}`
-        },
         body: formData
       })
 
@@ -130,33 +126,45 @@ function CustomerChat() {
     }
   }
 
-  // Simulated Voice transcription STT
+  // Voice transcription STT via MediaRecorder
   const handleSTT = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      console.error("Microphone not supported in this browser")
+      return
+    }
     setRecording(true)
-    setTimeout(async () => {
-      setRecording(false)
-      try {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      const chunks = []
+
+      mediaRecorder.ondataavailable = (e) => chunks.push(e.data)
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunks, { type: 'audio/wav' })
         const fileData = new FormData()
-        // Provide dummy wave header shell
-        const blob = new Blob([new Uint8Array(100)], { type: 'audio/wav' })
         fileData.append('file', blob, 'recording.wav')
-
-        const response = await fetch('http://localhost:8090/api/voice/stt', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token') || 'mock-token'}`
-          },
-          body: fileData
-        })
-
-        if (response.ok) {
-          const data = await response.json()
-          setInputValue(data.transcription)
+        try {
+          const response = await fetch('http://localhost:8090/api/voice/stt', {
+            method: 'POST',
+            body: fileData
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setInputValue(data.transcription)
+          }
+        } catch (err) {
+          console.error("Audio STT translation failed: ", err)
         }
-      } catch (err) {
-        console.error("Audio STT translation failed: ", err)
+        setRecording(false)
       }
-    }, 2000)
+
+      mediaRecorder.start()
+      setTimeout(() => mediaRecorder.stop(), 2000)
+    } catch (err) {
+      console.error("Microphone access denied: ", err)
+      setRecording(false)
+    }
   }
 
   const handleFeedback = async (rating) => {
@@ -368,14 +376,16 @@ function CustomerChat() {
               type="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+              onKeyDown={(e) => e.key === 'Enter' && !loading && handleSendMessage()}
+              disabled={loading}
               placeholder="বাংলা বা ইংরেজিতে আপনার প্রশ্নটি লিখুন... (Write your question here...)"
-              className="flex-1 bg-slate-900/80 border border-slate-700/60 focus:border-accentPurple rounded-xl px-5 outline-none text-slate-200 text-sm placeholder:text-slate-500 transition-all duration-300"
+              className="flex-1 bg-slate-900/80 border border-slate-700/60 focus:border-accentPurple rounded-xl px-5 outline-none text-slate-200 text-sm placeholder:text-slate-500 transition-all duration-300 disabled:opacity-50"
             />
 
             <button
               onClick={() => handleSendMessage()}
-              className="bg-accentPurple hover:bg-accentPurple/90 text-white p-4 rounded-xl shadow-lg shadow-accentPurple/10 flex items-center justify-center transition-all duration-300"
+              disabled={loading}
+              className="bg-accentPurple hover:bg-accentPurple/90 text-white p-4 rounded-xl shadow-lg shadow-accentPurple/10 flex items-center justify-center transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Send size={20} />
             </button>
