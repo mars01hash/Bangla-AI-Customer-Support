@@ -26,6 +26,7 @@ class AgentState(TypedDict):
     # Session identifiers
     session_id: str
     user_id: Optional[int]
-    
+    tenant_id: Optional[str]   # set when request comes from an embedded widget
+
     # Final output
     answer: str

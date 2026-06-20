@@ -16,15 +16,47 @@ logger = logging.getLogger(__name__)
 
 # --- Helper functions ---
 
+def _has_pending_clarification(messages: list) -> bool:
+    """Return True if the last AI message was asking the user a clarifying question."""
+    for msg in reversed(messages):
+        if isinstance(msg, AIMessage):
+            text = msg.content.strip()
+            lower = text.lower()
+            return (
+                text.endswith('?') or
+                'could you' in lower or
+                'can you' in lower or
+                'please tell' in lower or
+                'please provide' in lower or
+                'please share' in lower or
+                'please describe' in lower or
+                'what is the' in lower or
+                # Bangla question indicators
+                text.endswith('য়') or   # ends with Bangla '?'
+                ('বলুন' in text) or  # "বলুন"
+                ('কি' in text and '?' in text)   # "কি" + ?
+            )
+    return False
+
+
+def _build_conversation_summary(messages: list) -> str:
+    """Build a short summary of recent conversation turns for ticket context."""
+    lines = []
+    for msg in messages[-6:]:  # last 3 turns
+        if isinstance(msg, HumanMessage):
+            lines.append(f"Customer: {msg.content}")
+        elif isinstance(msg, AIMessage):
+            lines.append(f"Agent: {msg.content}")
+    return "\n".join(lines)
+
+
 def detect_language_heuristics(text: str) -> str:
     """Detect language by checking for Bangla Unicode blocks and English text."""
-    bangla_pattern = re.compile(r'[\u0980-\u09ff]')
+    bangla_pattern = re.compile(r'[ঀ-৿]')
     has_bangla = bool(bangla_pattern.search(text))
-    
-    # Check if it has english words
     english_words = re.findall(r'[a-zA-Z]+', text)
     has_english = len(english_words) > 0
-    
+
     if has_bangla and has_english:
         return "mixed"
     elif has_bangla:
@@ -32,43 +64,77 @@ def detect_language_heuristics(text: str) -> str:
     else:
         return "en"
 
+
 def detect_sentiment_heuristics(text: str) -> str:
     """Analyze text for sentiment indicators in Bangla and English."""
     text_lower = text.lower()
-    
+
     negatives = [
-        "খারাপ", "বাজে", "পচা", "ভুল", "সমস্যা", "দেরি", "ঘৃণা", "কাজ করছে না", "অযোগ্য", 
-        "হতাশ", "ফালতু", "নষ্ট", "ক্ষতি", "অভিযোগ", "bad", "worst", "broken", "angry", 
-        "hate", "error", "fail", "slow", "delay", "useless", "disappointed", "not working", 
-        "terrible", "annoyed", "frustrated", "refund"
+        "খারাপ", "বাজে", "পচা",
+        "ভুল", "সমস্যা", "দেরি",
+        "ঘৃণা", "কাজ করছে না",
+        "অযোগ্য", "হতাশ",
+        "ফালতু", "নষ্ট", "ক্ষতি",
+        "অভিযোগ",
+        "bad", "worst", "broken", "angry", "hate", "error", "fail", "slow",
+        "delay", "useless", "disappointed", "not working", "terrible",
+        "annoyed", "frustrated", "refund",
     ]
-    
+
     positives = [
-        "ভালো", "সুন্দর", "ধন্যবাদ", "সেরা", "দুর্দান্ত", "অসাধারণ", "ধন্যবাদ!", "উপকারী",
-        "good", "great", "nice", "awesome", "perfect", "thanks", "thank you", "helpful", 
-        "love", "excellent", "happy", "satisfied"
+        "ভালো", "সুন্দর",
+        "ধন্যবাদ", "সেরা",
+        "দুর্দান্ত",
+        "অসাধারণ",
+        "good", "great", "nice", "awesome", "perfect", "thanks",
+        "thank you", "helpful", "love", "excellent", "happy", "satisfied",
     ]
-    
+
     for word in negatives:
         if word in text_lower:
             return "negative"
-            
     for word in positives:
         if word in text_lower:
             return "positive"
-            
     return "neutral"
+
 
 def classify_intent_heuristics(text: str) -> str:
     """Route requests by matching trigger keywords for categories."""
     text_lower = text.lower()
-    
-    escalate_words = ["হিউম্যান", "মানুষ", "এজেন্ট", "কর্মকর্তা", "সরাসরি", "human", "agent", "support", "escalate", "talk to", "representative", "manager"]
-    billing_words = ["বিল", "টাকা", "কার্ড", "পেমেন্ট", "খরচ", "রিসিট", "ইনভয়েস", "billing", "payment", "money", "price", "charge", "invoice", "receipt"]
-    order_words = ["অর্ডার", "ডেলিভারি", "শিপিং", "পণ্য", "প্রোডাক্ট", "কোথায়", "ট্র্যাক", "order", "delivery", "shipping", "product", "track", "package", "where is"]
-    complaint_words = ["অভিযোগ", "নালিশ", "বাজে", "খারাপ", "ফালতু", "ঠকিয়েছে", "complaint", "issue", "claim", "problem", "disappointed", "sue", "scam"]
-    greeting_words = ["হ্যালো", "হাই", "কেমন", "সালাম", "আদাব", "hello", "hi", "hey", "greeting", "morning", "assalamualaikum", "adab"]
-    
+
+    escalate_words = [
+        "হিউম্যান", "মানুষ",
+        "এজেন্ট", "কর্মকর্তা",
+        "সরাসরি",
+        "human", "agent", "escalate", "talk to", "representative", "manager", "speak to person",
+    ]
+    billing_words = [
+        "বিল", "টাকা", "কার্ড",
+        "পেমেন্ট", "খরচ",
+        "রিসিট", "ইনভয়স",
+        "billing", "payment", "money", "price", "charge", "invoice", "receipt",
+    ]
+    order_words = [
+        "অর্ডার", "ডেলিভারি",
+        "শিপিং", "পণ্য",
+        "প্রোডাক্ট",
+        "কোথায়", "ট্র্যাক",
+        "order", "delivery", "shipping", "product", "track", "package", "where is",
+    ]
+    complaint_words = [
+        "অভিযোগ", "নালিশ",
+        "বাজে", "খারাপ",
+        "ফালতু", "ঠকিয়েছে",
+        "complaint", "issue", "claim", "problem", "disappointed", "sue", "scam",
+    ]
+    greeting_words = [
+        "হ্যালো", "হাই",
+        "কেমন", "সালাম",
+        "আদাব",
+        "hello", "hi", "hey", "greeting", "morning", "assalamualaikum", "adab",
+    ]
+
     for word in escalate_words:
         if word in text_lower:
             return "escalation"
@@ -84,14 +150,14 @@ def classify_intent_heuristics(text: str) -> str:
     for word in greeting_words:
         if word in text_lower:
             return "greeting"
-            
     return "faq"
+
 
 def query_llm_api(prompt: str, system_prompt: str = "") -> str:
     """Call external LLM based on settings, or fallback to heuristics."""
     if settings.LLM_PROVIDER == "mock":
-        return "" # Calling module should handle mock return
-        
+        return ""
+
     try:
         if settings.LLM_PROVIDER == "openai":
             headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
@@ -99,13 +165,16 @@ def query_llm_api(prompt: str, system_prompt: str = "") -> str:
                 "model": settings.LLM_MODEL_NAME,
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ]
+                    {"role": "user", "content": prompt},
+                ],
             }
-            res = httpx.post("https://api.openai.com/v1/chat/completions", json=payload, headers=headers, timeout=10)
+            res = httpx.post(
+                "https://api.openai.com/v1/chat/completions",
+                json=payload, headers=headers, timeout=15,
+            )
             if res.status_code == 200:
                 return res.json()["choices"][0]["message"]["content"]
-            logger.error(f"OpenAI API returned non-200 status {res.status_code}: {res.text[:200]}")
+            logger.error(f"OpenAI API returned {res.status_code}: {res.text[:200]}")
 
         elif settings.LLM_PROVIDER == "groq":
             headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
@@ -113,151 +182,197 @@ def query_llm_api(prompt: str, system_prompt: str = "") -> str:
                 "model": settings.LLM_MODEL_NAME,
                 "messages": [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt}
-                ]
+                    {"role": "user", "content": prompt},
+                ],
             }
-            res = httpx.post("https://api.groq.com/openai/v1/chat/completions", json=payload, headers=headers, timeout=10)
+            res = httpx.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                json=payload, headers=headers, timeout=15,
+            )
             if res.status_code == 200:
                 return res.json()["choices"][0]["message"]["content"]
-            logger.error(f"Groq API returned non-200 status {res.status_code}: {res.text[:200]}")
+            logger.error(f"Groq API returned {res.status_code}: {res.text[:200]}")
 
         elif settings.LLM_PROVIDER == "huggingface":
-            # API endpoint for HF model inference
             headers = {"Authorization": f"Bearer {settings.LLM_API_KEY}"}
             res = httpx.post(
                 f"https://api-inference.huggingface.co/models/{settings.LLM_MODEL_NAME}",
                 json={"inputs": f"System: {system_prompt}\nUser: {prompt}\nAssistant:"},
                 headers=headers,
-                timeout=10
+                timeout=15,
             )
             if res.status_code == 200:
                 result = res.json()
-                if isinstance(result, list) and len(result) > 0:
+                if isinstance(result, list) and result:
                     return result[0].get("generated_text", "")
                 return str(result)
-            logger.error(f"HuggingFace API returned non-200 status {res.status_code}: {res.text[:200]}")
-                
+            logger.error(f"HuggingFace API returned {res.status_code}: {res.text[:200]}")
+
     except Exception as e:
-        logger.error(f"Error querying external LLM provider ({settings.LLM_PROVIDER}): {e}. Using mock/fallback.")
-        
+        logger.error(f"Error querying LLM ({settings.LLM_PROVIDER}): {e}")
+
     return ""
 
 
 # --- Node Implementations ---
 
 def language_sentiment_detector_node(state: AgentState) -> Dict[str, Any]:
-    """Node: Automatically analyzes language, sentiment, and classifies customer intent."""
+    """Node: Analyzes language, sentiment, and classifies customer intent."""
     current_message = state["current_message"]
-    
+
     lang = detect_language_heuristics(current_message)
     sentiment = detect_sentiment_heuristics(current_message)
     category = classify_intent_heuristics(current_message)
-    
+
     logger.info(f"Node [Detector] - Lang: {lang}, Sentiment: {sentiment}, Category: {category}")
-    
+
     return {
         "detected_language": lang,
         "detected_sentiment": sentiment,
-        "category": category
+        "category": category,
     }
 
 
 def greeting_agent_node(state: AgentState) -> Dict[str, Any]:
     """Node: Handles standard greetings in Bangla or English."""
     lang = state["detected_language"]
-    
-    # Query LLM if available
+
     llm_resp = query_llm_api(
         prompt=state["current_message"],
-        system_prompt=f"You are a friendly customer service greeting agent. Respond warmly in the language of the user (Detected: {lang}). Keep it short."
+        system_prompt=(
+            f"You are a friendly Bangla AI customer support agent. "
+            f"Greet the customer warmly, introduce yourself briefly, and ask how you can help. "
+            f"Respond in the user's language (detected: {lang}). Keep it to 2-3 sentences."
+        ),
     )
-    
+
     if llm_resp:
         answer = llm_resp
+    elif lang in ["bn", "mixed"]:
+        answer = (
+            "হ্যালো! আমাদের "
+            "কাস্টমার সাপোর্ট "
+            "পোর্টালে আপনাকে "
+            "স্বাগতম। আজ আপনাকে "
+            "কীভাবে সাহায্য "
+            "করতে পারি?"
+        )
     else:
-        # Fallback responses
-        if lang in ["bn", "mixed"]:
-            answer = "হ্যালো! আমাদের কাস্টমার সাপোর্ট পোর্টালে আপনাকে স্বাগতম। আজ আপনাকে কীভাবে সাহায্য করতে পারি?"
-        else:
-            answer = "Hello! Welcome to our customer support portal. How can I assist you today?"
-            
+        answer = "Hello! Welcome to our customer support. How can I help you today?"
+
     return {
         "answer": answer,
         "confidence_score": 1.0,
         "sources": [],
-        "messages": [AIMessage(content=answer)]
+        "messages": [AIMessage(content=answer)],
     }
 
 
 def faq_agent_node(state: AgentState) -> Dict[str, Any]:
-    """Node: RAG Agent querying vector store and composing synthesized citations."""
+    """Node: RAG agent — queries vector store, asks for clarification when confidence is low."""
     query = state["current_message"]
     lang = state["detected_language"]
-    
-    # Query vector database
-    retrieved_docs = vector_store.query_documents(query, n_results=3)
-    
-    # Format citations
+    messages = state.get("messages", [])
+
+    tenant_id = state.get("tenant_id")
+    metadata_filter = {"tenant_id": tenant_id} if tenant_id else None
+    retrieved_docs = vector_store.query_documents(query, n_results=3, metadata_filter=metadata_filter)
+    # Fall back to global KB if tenant KB has no results
+    if not retrieved_docs and tenant_id:
+        retrieved_docs = vector_store.query_documents(query, n_results=3)
+
     sources = []
     context_blocks = []
-    
     for idx, doc in enumerate(retrieved_docs):
-        src = doc["metadata"].get("source", f"Document-{idx+1}")
+        src = doc["metadata"].get("source", f"Document-{idx + 1}")
         sources.append({
             "id": doc["id"],
             "source": src,
             "confidence": doc["confidence_score"],
-            "snippet": doc["content"][:200] + "..."
+            "snippet": doc["content"][:200] + "...",
         })
         context_blocks.append(f"Source: {src}\nContent: {doc['content']}")
-        
-    combined_context = "\n\n".join(context_blocks)
-    
-    # Confidence score is the average of retrieved matches (default to 0.0 if empty list)
-    confidence = float(sum([d["confidence_score"] for d in retrieved_docs]) / len(retrieved_docs)) if retrieved_docs else 0.0
-    
-    # If confidence is below 0.35, route to automatic escalation
+
+    confidence = (
+        float(sum(d["confidence_score"] for d in retrieved_docs) / len(retrieved_docs))
+        if retrieved_docs else 0.0
+    )
+
+    # Low confidence — ask clarifying question instead of immediately escalating
     if confidence < 0.35:
-        logger.info(f"RAG confidence ({confidence:.2f}) too low. Redirecting to Escalation.")
+        logger.info(f"RAG confidence {confidence:.2f} too low — asking clarifying question.")
+        clarify_resp = query_llm_api(
+            prompt=query,
+            system_prompt=(
+                f"You are a helpful customer support agent. The customer asked something you "
+                f"couldn't find a clear answer for. Politely ask them to rephrase or give one "
+                f"more specific detail (e.g. whether it's about an order, payment, or product). "
+                f"Keep it to one friendly sentence ending with a question mark. "
+                f"Respond in language: {lang}."
+            ),
+        )
+        if clarify_resp:
+            answer = clarify_resp
+        elif lang in ["bn", "mixed"]:
+            answer = (
+                "দুঃখিত, আমি আপনার "
+                "প্রশ্নটি পুরোপুরি "
+                "বুঝতে পারিনি — "
+                "এটা কি অর্ডার, "
+                "পেমেন্ট, নাকি "
+                "অন্য কিছু নিয়ে?"
+            )
+        else:
+            answer = (
+                "I want to make sure I give you the right answer — could you give me a bit more "
+                "detail? For example, is this about an order, a payment, or something else?"
+            )
         return {
+            "answer": answer,
             "confidence_score": confidence,
-            "category": "escalation"
+            "sources": [],
+            "messages": [AIMessage(content=answer)],
         }
-        
-    llm_prompt = f"Context:\n{combined_context}\n\nQuestion: {query}\n\nProvide an answer strictly using the context above. If you don't know, state it clearly. Language: {lang}."
+
+    combined_context = "\n\n".join(context_blocks)
+    llm_prompt = (
+        f"Context:\n{combined_context}\n\n"
+        f"Question: {query}\n\n"
+        f"Answer using the context above. Be concise and helpful. "
+        f"If the context doesn't fully cover the question, say so and offer to connect them with support. "
+        f"Language: {lang}."
+    )
     llm_resp = query_llm_api(
         prompt=llm_prompt,
-        system_prompt="You are a helpful knowledge assistant. Keep your responses accurate and cite sources when necessary."
+        system_prompt="You are a helpful customer support knowledge assistant. Cite sources naturally.",
     )
-    
+
     if llm_resp:
         answer = llm_resp
     else:
-        # Structured heuristic fallback
-        sources_str = ", ".join([s["source"] for s in sources])
+        sources_str = ", ".join(s["source"] for s in sources)
         if lang in ["bn", "mixed"]:
             answer = f"আমাদের নথি অনুসারে: {retrieved_docs[0]['content']}\n\n(উৎস: {sources_str})"
         else:
             answer = f"According to our knowledge base: {retrieved_docs[0]['content']}\n\n(Sources: {sources_str})"
-            
+
     return {
         "answer": answer,
         "confidence_score": confidence,
         "sources": sources,
-        "messages": [AIMessage(content=answer)]
+        "messages": [AIMessage(content=answer)],
     }
 
 
 def order_support_agent_node(state: AgentState) -> Dict[str, Any]:
-    """Node: Handles customer order status lookups and order issues."""
+    """Node: Handles order status lookups. Asks for Order ID if not provided."""
     lang = state["detected_language"]
     msg = state["current_message"]
+    messages = state.get("messages", [])
 
-    # Extract order ID (e.g. #12345, ORD-12345, or bare 5-digit number)
-    order_match = re.search(r'(ord-[\w]+|#\d+|\d{5})', msg.lower())
+    order_match = re.search(r'(ord-[\w]+|#\d+|\d{5})', msg.lower())
     raw_id = order_match.group(1).upper() if order_match else None
 
-    # Normalise to ORD-XXXXX format for DB lookup
     if raw_id:
         if raw_id.startswith('#'):
             db_order_id = 'ORD-' + raw_id[1:]
@@ -267,6 +382,21 @@ def order_support_agent_node(state: AgentState) -> Dict[str, Any]:
             db_order_id = raw_id
     else:
         db_order_id = None
+
+    # No order ID — also check recent messages in case user gave it earlier
+    if not db_order_id:
+        for prev_msg in reversed(messages):
+            if isinstance(prev_msg, HumanMessage):
+                m = re.search(r'(ord-[\w]+|#\d+|\d{5})', prev_msg.content.lower())
+                if m:
+                    raw = m.group(1).upper()
+                    if raw.startswith('#'):
+                        db_order_id = 'ORD-' + raw[1:]
+                    elif re.match(r'^\d+$', raw):
+                        db_order_id = 'ORD-' + raw
+                    else:
+                        db_order_id = raw
+                    break
 
     order = None
     if db_order_id:
@@ -280,110 +410,205 @@ def order_support_agent_node(state: AgentState) -> Dict[str, Any]:
 
     if order:
         status_map = {
-            "processing": ("প্রক্রিয়াধীন", "processing"),
-            "shipped": ("শিপ করা হয়েছে", "shipped"),
+            "processing":       ("প্রক্রিয়াধীন", "processing"),
+            "shipped":          ("শিপ করা হয়েছে", "shipped"),
             "out_for_delivery": ("ডেলিভারিতে আছে", "out for delivery"),
-            "delivered": ("ডেলিভারি সম্পন্ন", "delivered"),
-            "cancelled": ("বাতিল", "cancelled"),
+            "delivered":        ("ডেলিভারি সম্পন্ন", "delivered"),
+            "cancelled":        ("বাতিল", "cancelled"),
         }
         bn_status, en_status = status_map.get(order.status, (order.status, order.status))
-        delivery_info = f" আনুমানিক ডেলিভারি: {order.estimated_delivery}।" if order.estimated_delivery else ""
-        delivery_info_en = f" Estimated delivery: {order.estimated_delivery}." if order.estimated_delivery else ""
+        delivery_bn = f" আনুমানিক ডেলিভারি: {order.estimated_delivery}।" if order.estimated_delivery else ""
+        delivery_en = f" Estimated delivery: {order.estimated_delivery}." if order.estimated_delivery else ""
 
         if lang in ["bn", "mixed"]:
             answer = (
-                f"আপনার অর্ডার {order.order_id} পাওয়া গেছে।\n"
+                f"আপনার অর্ডার {order.order_id} পাওয়া গেছে।\n"
                 f"গ্রাহক: {order.customer_name}\n"
-                f"স্ট্যাটাস: {bn_status}"
-                f"{delivery_info}"
+                f"স্ট্যাটাস: {bn_status}{delivery_bn}"
             )
         else:
             answer = (
                 f"Order {order.order_id} found.\n"
                 f"Customer: {order.customer_name}\n"
-                f"Status: {en_status}"
-                f"{delivery_info_en}"
+                f"Status: {en_status}{delivery_en}"
             )
         confidence = 1.0
+
     elif db_order_id:
-        if lang in ["bn", "mixed"]:
-            answer = f"দুঃখিত, {db_order_id} নম্বরের কোনো অর্ডার আমাদের সিস্টেমে পাওয়া যায়নি। অনুগ্রহ করে আইডিটি পুনরায যাচাই করুন।"
+        llm_resp = query_llm_api(
+            prompt=f"Order ID {db_order_id} was not found.",
+            system_prompt=(
+                f"Tell the customer their order ID '{db_order_id}' was not found. "
+                f"Apologize and ask them to double-check the ID or provide it again. "
+                f"Language: {lang}."
+            ),
+        )
+        if llm_resp:
+            answer = llm_resp
+        elif lang in ["bn", "mixed"]:
+            answer = f"দুঃখিত, {db_order_id} নম্বরের কোনো অর্ডার পাওয়া যায়নি। আইডিটি পুনরায় যাচাই করুন, নাকি অন্য কোনো আইডি দিয়ে চেষ্টা করুন?"
         else:
-            answer = f"Sorry, no order with ID {db_order_id} was found in our system. Please double-check the order ID."
+            answer = f"Sorry, no order with ID '{db_order_id}' was found. Could you double-check the order ID and try again?"
         confidence = 0.5
+
     else:
-        if lang in ["bn", "mixed"]:
-            answer = "অর্ডার স্ট্যাটাস দেখতে অনুগ্রহ করে আপনার অর্ডার আইডিটি উল্লেখ করুন (যেমন: ORD-12345 বা #12345)।"
+        # No order ID at all — ask for it conversationally
+        llm_resp = query_llm_api(
+            prompt=msg,
+            system_prompt=(
+                f"The customer wants to check on their order but hasn't provided an order ID. "
+                f"Politely ask for their Order ID (format: ORD-XXXXX or #XXXXX). "
+                f"Language: {lang}. One sentence."
+            ),
+        )
+        if llm_resp:
+            answer = llm_resp
+        elif lang in ["bn", "mixed"]:
+            answer = "অর্ডার স্ট্যাটাস দেখতে আপনার অর্ডার আইডিটি জানান (যেমন: ORD-12345 বা #12345)?"
         else:
-            answer = "To look up your order, please provide your Order ID (e.g., ORD-12345 or #12345)."
+            answer = "Sure, I can check that for you! Could you please share your Order ID? (e.g., ORD-12345 or #12345)"
         confidence = 0.9
 
     return {
         "answer": answer,
         "confidence_score": confidence,
         "sources": [],
-        "messages": [AIMessage(content=answer)]
+        "messages": [AIMessage(content=answer)],
     }
 
 
 def billing_agent_node(state: AgentState) -> Dict[str, Any]:
-    """Node: Handles transaction logs, billing errors, and payment issues."""
+    """Node: Asks what the specific billing issue is before attempting to resolve."""
     lang = state["detected_language"]
-    
-    if lang in ["bn", "mixed"]:
-        answer = "বিলিং এবং পেমেন্ট সংক্রান্ত তথ্যের জন্য: আমরা পেমেন্ট গেটওয়েতে আপনার লেনদেনের ইতিহাস যাচাই করছি। নিশ্চিত থাকুন, কোনো অতিরিক্ত চার্জ নেওয়া হলে তা আগামী ৫-৭ দিনের মধ্যে ফেরত দেওয়া হবে।"
+
+    llm_resp = query_llm_api(
+        prompt=state["current_message"],
+        system_prompt=(
+            f"You are a billing support agent. The customer has a billing or payment concern. "
+            f"Ask one focused question to understand their specific issue "
+            f"(e.g. wrong charge, payment failed, refund request, invoice error). "
+            f"Be empathetic and end with a question mark. Language: {lang}."
+        ),
+    )
+
+    if llm_resp:
+        answer = llm_resp
+    elif lang in ["bn", "mixed"]:
+        answer = "বিলিং সমস্যায় আমি সাহায্য করতে পারি। আপনার সমস্যাটি কি — অতিরিক্ত চার্জ, পেমেন্ট ব্যর্থ, নাকি রিফান্ডের অনুরোধ?"
     else:
-        answer = "Regarding your billing inquiry: We are verifying your recent transaction logs. Rest assured, any accidental double charges will be fully refunded within 5-7 business days."
-        
+        answer = "I can help with your billing concern. Could you tell me more — was there an incorrect charge, a failed payment, or would you like to request a refund?"
+
     return {
         "answer": answer,
         "confidence_score": 0.85,
         "sources": [],
-        "messages": [AIMessage(content=answer)]
+        "messages": [AIMessage(content=answer)],
     }
 
 
 def complaint_agent_node(state: AgentState) -> Dict[str, Any]:
-    """Node: Receives complaints. Triggers priority escalation if sentiment is highly negative."""
+    """Node: Receives complaints. Asks what went wrong first, then escalates on follow-up."""
     lang = state["detected_language"]
-    sentiment = state["detected_sentiment"]
-    
-    # If customer is angry/negative, automatically update intent to trigger escalation
-    if sentiment == "negative":
-        logger.info("Complaint sentiment is negative. Rerouting to Escalation Node.")
-        return {
-            "category": "escalation"
-        }
-        
-    if lang in ["bn", "mixed"]:
-        answer = "আমরা আপনার অভিযোগটি গুরুত্বের সাথে নথিভুক্ত করেছি। আমাদের কোয়ালিটি কন্ট্রোল টিম বিষয়টি খতিয়ে দেখছে এবং দ্রুত ব্যবস্থা গ্রহণ করবে।"
+    messages = state.get("messages", [])
+
+    # If we've already asked a clarifying question, route to escalation now
+    if _has_pending_clarification(messages):
+        logger.info("Complaint: clarification collected — rerouting to escalation.")
+        return {"category": "escalation"}
+
+    # First visit: ask what went wrong before escalating
+    logger.info("Complaint: asking clarifying question before escalating.")
+    llm_resp = query_llm_api(
+        prompt=state["current_message"],
+        system_prompt=(
+            f"The customer is filing a complaint. Empathize sincerely and ask one specific "
+            f"question to understand what went wrong (e.g. order, product quality, delivery, "
+            f"payment, or service). Do NOT create a ticket yet. "
+            f"Keep it to 2 sentences ending with a question mark. Language: {lang}."
+        ),
+    )
+    if llm_resp:
+        answer = llm_resp
+    elif lang in ["bn", "mixed"]:
+        answer = (
+            "আপনার অসুবিধার জন্য "
+            "আমি সত্যিই দুঃখিত। "
+            "ঠিক কী হয়েছে জানালে "
+            "আমি আরো ভালোভাবে সাহায্য "
+            "করতে পারব — এটা কি "
+            "অর্ডার, পেমেন্ট, "
+            "ডেলিভারি, নাকি অন্য "
+            "কিছু নিয়ে?"
+        )
     else:
-        answer = "We have registered your complaint and log details. Our quality assurance team is investigating the issue to ensure this does not happen again."
-        
+        answer = (
+            "I'm sorry to hear you're having trouble. "
+            "Could you tell me what specifically went wrong — was it related to an order, "
+            "delivery, payment, or something else?"
+        )
     return {
         "answer": answer,
-        "confidence_score": 0.9,
+        "confidence_score": 1.0,
         "sources": [],
-        "messages": [AIMessage(content=answer)]
+        "messages": [AIMessage(content=answer)],
     }
 
 
 def escalation_agent_node(state: AgentState) -> Dict[str, Any]:
-    """Node: Creates database support ticket automatically and notifies human support agents."""
+    """Node: Asks clarifying questions before creating a support ticket."""
     lang = state["detected_language"]
     query = state["current_message"]
     sentiment = state["detected_sentiment"]
-    
-    # Save ticket in the database
+    messages = state.get("messages", [])
+
+    # If no clarifying question has been asked yet, ask first — don't create ticket
+    if not _has_pending_clarification(messages):
+        logger.info("Escalation: no prior clarification — asking question before ticket creation.")
+        llm_resp = query_llm_api(
+            prompt=query,
+            system_prompt=(
+                f"The customer needs support. Before creating a ticket, ask them 1-2 "
+                f"specific questions to understand their issue: what exactly happened, "
+                f"whether it involves an order (and if so, the order ID), and how urgent it is. "
+                f"Be empathetic. Do NOT say you will create a ticket yet. "
+                f"End with a question mark. Language: {lang}."
+            ),
+        )
+        if llm_resp:
+            answer = llm_resp
+        elif lang in ["bn", "mixed"]:
+            answer = (
+                "আমি আপনাকে সাহায্য করতে "
+                "চাই। একটু বিস্তারিত "
+                "জানান — ঠিক কী সমস্যা "
+                "হচ্ছে? যদি এটি অর্ডার "
+                "সম্পর্কিত হয়, তাহলে "
+                "অর্ডার আইডিটিও দিন?"
+            )
+        else:
+            answer = (
+                "I'd like to make sure we get this resolved for you. "
+                "Could you describe what happened? If this is related to an order, "
+                "please also share your Order ID so I can look into it right away."
+            )
+
+        return {
+            "answer": answer,
+            "confidence_score": 1.0,
+            "ticket_escalated": False,
+            "ticket_id": None,
+            "sources": [],
+            "messages": [AIMessage(content=answer)],
+        }
+
+    # Clarification was already given — now create the ticket
+    logger.info("Escalation: clarification collected — creating support ticket.")
+    conversation_summary = _build_conversation_summary(messages)
     ticket_id = f"TKT-{uuid.uuid4().hex[:8].upper()}"
-    
-    # Setup DB session
+
     db = SessionLocal()
     try:
-        # Look up admin or assign to system
         agent = db.query(User).filter(User.role == "agent").first()
-        agent_id = agent.id if agent else None
-        
         ticket = Ticket(
             ticket_id=ticket_id,
             customer_name="Online Customer",
@@ -391,30 +616,53 @@ def escalation_agent_node(state: AgentState) -> Dict[str, Any]:
             category=state.get("category", "general"),
             priority="high" if sentiment == "negative" else "medium",
             status="open",
-            description=query,
+            description=f"{query}\n\n--- Conversation context ---\n{conversation_summary}",
             sentiment=sentiment,
-            assigned_agent_id=agent_id
+            assigned_agent_id=agent.id if agent else None,
         )
         db.add(ticket)
         db.commit()
-        logger.info(f"Support ticket {ticket_id} automatically created in DB.")
+        logger.info(f"Support ticket {ticket_id} created.")
     except Exception as e:
-        logger.error(f"Error saving escalation ticket to DB: {e}")
+        logger.error(f"Error saving escalation ticket: {e}")
         db.rollback()
     finally:
         db.close()
-        
-    # Generate user message response
-    if lang in ["bn", "mixed"]:
-        answer = f"আমি দুঃখিত যে স্বয়ংক্রিয়ভাবে আমি আপনার সমস্যার সমাধান করতে পারছি না। আমি আপনার জন্য একটি কাস্টমার সাপোর্ট টিকিট তৈরি করেছি (টিকিট আইডি: {ticket_id})। আমাদের একজন কাস্টমার রিপ্রেজেন্টেটিভ শীঘ্রই ইমেইলে আপনার সাথে যোগাযোগ করবেন।"
+
+    llm_resp = query_llm_api(
+        prompt=f"Ticket {ticket_id} has been created for: {query}",
+        system_prompt=(
+            f"Inform the customer that a support ticket ({ticket_id}) has been created and a "
+            f"human agent will follow up via email. Thank them for the details they provided. "
+            f"Be warm and reassuring. Language: {lang}."
+        ),
+    )
+
+    if llm_resp:
+        answer = llm_resp
+    elif lang in ["bn", "mixed"]:
+        answer = (
+            f"আপনার তথ্যের জন্য "
+            f"ধন্যবাদ। আমি আপনার "
+            f"জন্য একটি সাপোর্ট "
+            f"টিকিট তৈরি করেছি "
+            f"(টিকিট আইডি: {ticket_id})। "
+            f"আমাদের একজন সাপোর্ট "
+            f"এজেন্ট শীঘ্রই ইমেইলে "
+            f"যোগাযোগ করবেন।"
+        )
     else:
-        answer = f"I apologize that I couldn't resolve this issue automatically. I have created a priority support ticket for you (Ticket ID: {ticket_id}). One of our human support agents will follow up via email shortly."
-        
+        answer = (
+            f"Thank you for sharing those details. I've created a support ticket for you "
+            f"(Ticket ID: {ticket_id}). One of our agents will follow up via email shortly "
+            f"and make sure your issue is fully resolved."
+        )
+
     return {
         "answer": answer,
         "confidence_score": 1.0,
         "ticket_escalated": True,
         "ticket_id": ticket_id,
         "sources": [],
-        "messages": [AIMessage(content=answer)]
+        "messages": [AIMessage(content=answer)],
     }

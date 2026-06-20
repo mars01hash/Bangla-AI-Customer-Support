@@ -15,16 +15,21 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from app.config import settings
 from app.database import get_db
-from app.models import User, Ticket, Conversation, Message, Feedback, KnowledgeDocument, Order
+from app.models import User, Ticket, Conversation, Message, Feedback, KnowledgeDocument, Order, Tenant, KnowledgeEntry
 from app.schemas import (
-    UserCreate, UserResponse, Token, TicketCreate, TicketResponse,
+    UserCreate, UserUpdate, UserResponse, Token, TicketCreate, TicketResponse,
     TicketUpdate, FeedbackCreate, FeedbackResponse, AnalyticsSummaryResponse,
     AnalyticsChartsResponse, DailyDataPoint,
-    OrderCreate, OrderUpdate, OrderResponse
+    OrderCreate, OrderUpdate, OrderResponse,
+    TenantCreate, TenantUpdate, TenantResponse, TenantStats,
+    KnowledgeEntryCreate, KnowledgeEntryResponse,
 )
 from app.auth import (
-    get_password_hash, verify_password, create_access_token, 
-    get_current_user, get_current_active_user, require_admin, require_agent_or_admin
+    get_password_hash, verify_password, create_access_token,
+    get_current_user, get_current_active_user,
+    require_admin, require_agent_or_admin,
+    require_super_admin, require_store_admin,
+    get_tenant_from_api_key,
 )
 from app.agents.graph import support_graph
 from app.agents.nodes import detect_sentiment_heuristics
@@ -77,11 +82,16 @@ def login_for_access_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(data={"sub": user.email, "role": user.role})
+    access_token = create_access_token(data={
+        "sub": user.email,
+        "role": user.role,
+        "tenant_id": user.tenant_id,
+    })
     return {
         "access_token": access_token,
         "token_type": "bearer",
-        "role": user.role
+        "role": user.role,
+        "tenant_id": user.tenant_id,
     }
 
 @api_router.get("/auth/me", response_model=UserResponse)
@@ -308,8 +318,11 @@ def list_tickets(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_agent_or_admin)
 ):
-    """Retrieve and filter customer tickets (Protected: Agents and Admins only)."""
+    """Retrieve tickets scoped to the user's tenant (super_admin sees all)."""
     query = db.query(Ticket)
+    # Store admins and agents only see their own tenant's tickets
+    if current_user.role in ("store_admin", "agent") and current_user.tenant_id:
+        query = query.filter(Ticket.tenant_id == current_user.tenant_id)
     if status:
         query = query.filter(Ticket.status == status)
     if priority:
@@ -401,6 +414,44 @@ def list_orders(
     if status:
         query = query.filter(Order.status == status)
     return query.order_by(Order.created_at.desc()).all()
+
+
+@api_router.post("/orders/place", response_model=OrderResponse)
+def place_order_public(order_in: OrderCreate, db: Session = Depends(get_db)):
+    """Public order placement — no authentication required. Used by the ecommerce storefront."""
+    import json as _json
+    order_id = f"ORD-{uuid.uuid4().hex[:5].upper()}"
+    order = Order(
+        order_id=order_id,
+        customer_name=order_in.customer_name,
+        customer_email=order_in.customer_email,
+        status="processing",
+        items=_json.dumps(order_in.items),
+        total_amount=order_in.total_amount,
+        estimated_delivery=order_in.estimated_delivery,
+    )
+    db.add(order)
+    db.commit()
+    db.refresh(order)
+    logger.info(f"Public order placed: {order_id} for {order_in.customer_name}")
+    return order
+
+
+@api_router.get("/orders/track/{order_id}")
+def track_order_public(order_id: str, db: Session = Depends(get_db)):
+    """Public order status lookup — no authentication required."""
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {
+        "order_id": order.order_id,
+        "status": order.status,
+        "customer_name": order.customer_name,
+        "estimated_delivery": order.estimated_delivery,
+        "total_amount": order.total_amount,
+        "items": order.items,
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+    }
 
 
 @api_router.get("/orders/{order_id}", response_model=OrderResponse)
@@ -811,4 +862,368 @@ from fastapi import Response
 def get_metrics():
     """Expose Prometheus telemetry logs."""
     return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+# ============================================================
+# 10. TENANT MANAGEMENT  (super_admin only)
+# ============================================================
+
+def _generate_api_key() -> str:
+    return "sk_" + uuid.uuid4().hex[:32]
+
+@api_router.post("/tenants", response_model=TenantResponse)
+def create_tenant(
+    payload: TenantCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    """Create a new ecommerce tenant / store account."""
+    tenant = Tenant(
+        id=str(uuid.uuid4()),
+        name=payload.name,
+        domain=payload.domain,
+        api_key=_generate_api_key(),
+        plan=payload.plan or "free",
+        widget_color=payload.widget_color or "#6366f1",
+        welcome_message=payload.welcome_message or "হ্যালো! কীভাবে সাহায্য করতে পারি?",
+    )
+    db.add(tenant)
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+@api_router.get("/tenants", response_model=List[TenantResponse])
+def list_tenants(db: Session = Depends(get_db), current_user: User = Depends(require_super_admin)):
+    """List all registered tenants."""
+    return db.query(Tenant).order_by(Tenant.created_at.desc()).all()
+
+@api_router.get("/tenants/{tenant_id}", response_model=TenantResponse)
+def get_tenant(tenant_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_super_admin)):
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return t
+
+@api_router.put("/tenants/{tenant_id}", response_model=TenantResponse)
+def update_tenant(
+    tenant_id: str,
+    payload: TenantUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    for field, val in payload.model_dump(exclude_none=True).items():
+        setattr(t, field, val)
+    db.commit()
+    db.refresh(t)
+    return t
+
+@api_router.delete("/tenants/{tenant_id}")
+def delete_tenant(tenant_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_super_admin)):
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    db.delete(t)
+    db.commit()
+    return {"detail": f"Tenant '{t.name}' deleted."}
+
+@api_router.post("/tenants/{tenant_id}/rotate-key", response_model=TenantResponse)
+def rotate_api_key(tenant_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_super_admin)):
+    """Generate a new API key for a tenant (invalidates the old one)."""
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    t.api_key = _generate_api_key()
+    db.commit()
+    db.refresh(t)
+    return t
+
+@api_router.get("/tenants/{tenant_id}/stats", response_model=TenantStats)
+def get_tenant_stats(tenant_id: str, db: Session = Depends(get_db), current_user: User = Depends(require_super_admin)):
+    t = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return TenantStats(
+        tenant_id=t.id,
+        name=t.name,
+        total_tickets=db.query(func.count(Ticket.id)).filter(Ticket.tenant_id == tenant_id).scalar() or 0,
+        open_tickets=db.query(func.count(Ticket.id)).filter(Ticket.tenant_id == tenant_id, Ticket.status == "open").scalar() or 0,
+        total_conversations=db.query(func.count(Conversation.id)).filter(Conversation.tenant_id == tenant_id).scalar() or 0,
+        kb_entries=db.query(func.count(KnowledgeEntry.id)).filter(KnowledgeEntry.tenant_id == tenant_id).scalar() or 0,
+    )
+
+# Users — super admin can list and manage all platform users
+@api_router.get("/users", response_model=List[UserResponse])
+def list_users(db: Session = Depends(get_db), current_user: User = Depends(require_super_admin)):
+    return db.query(User).order_by(User.created_at.desc()).all()
+
+@api_router.put("/users/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_super_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    for field, val in payload.model_dump(exclude_none=True).items():
+        setattr(user, field, val)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+# ============================================================
+# 11. STORE ADMIN SELF-SERVICE  (store_admin scoped)
+# ============================================================
+
+@api_router.get("/my-store", response_model=TenantResponse)
+def get_my_store(db: Session = Depends(get_db), current_user: User = Depends(require_store_admin)):
+    """Return the store details for the currently logged-in store admin."""
+    if current_user.role == "super_admin":
+        raise HTTPException(status_code=400, detail="super_admin has no single store — use /tenants")
+    t = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="No store associated with this account")
+    return t
+
+@api_router.put("/my-store", response_model=TenantResponse)
+def update_my_store(
+    payload: TenantUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_store_admin),
+):
+    if current_user.role == "super_admin":
+        raise HTTPException(status_code=400, detail="Use /tenants/{id} for super_admin")
+    t = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="No store found")
+    for field, val in payload.model_dump(exclude_none=True).items():
+        setattr(t, field, val)
+    db.commit()
+    db.refresh(t)
+    return t
+
+@api_router.get("/my-store/embed-code")
+def get_embed_code(db: Session = Depends(get_db), current_user: User = Depends(require_store_admin)):
+    """Return the HTML embed snippet for this store's chatbot widget."""
+    if current_user.role == "super_admin":
+        raise HTTPException(status_code=400, detail="Use /tenants/{id} for super_admin")
+    t = db.query(Tenant).filter(Tenant.id == current_user.tenant_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="No store found")
+    snippet = f"""<!-- ChatBot Widget — paste before </body> on your website -->
+<script>
+  window.SHOPBOT_KEY  = "{t.api_key}";
+  window.SHOPBOT_API  = "https://your-platform-domain.com";
+  window.SHOPBOT_COLOR = "{t.widget_color}";
+</script>
+<script src="https://your-platform-domain.com/api/widget.js" async></script>"""
+    return {"api_key": t.api_key, "embed_snippet": snippet, "widget_color": t.widget_color}
+
+
+# ── Knowledge Base Management ─────────────────────────────────────────────────
+
+@api_router.get("/my-store/knowledge", response_model=List[KnowledgeEntryResponse])
+def list_kb_entries(db: Session = Depends(get_db), current_user: User = Depends(require_store_admin)):
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No store associated")
+    return db.query(KnowledgeEntry).filter(KnowledgeEntry.tenant_id == current_user.tenant_id).order_by(KnowledgeEntry.id.desc()).all()
+
+@api_router.post("/my-store/knowledge", response_model=KnowledgeEntryResponse)
+def create_kb_entry(
+    payload: KnowledgeEntryCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_store_admin),
+):
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No store associated")
+    entry = KnowledgeEntry(
+        tenant_id=current_user.tenant_id,
+        question=payload.question,
+        answer=payload.answer,
+        category=payload.category or "general",
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    # Index into vector store with tenant scoping
+    try:
+        from app.rag.vectorstore import vector_store
+        text = f"Q: {payload.question}\nA: {payload.answer}"
+        vid = str(uuid.uuid4())
+        vector_store.add_documents(
+            [text],
+            [{"tenant_id": current_user.tenant_id, "source": "store_kb", "category": payload.category or "general"}],
+            [vid],
+        )
+        entry.vector_id = vid
+        db.commit()
+    except Exception as e:
+        logger.warning(f"Failed to index KB entry into vector store: {e}")
+    return entry
+
+@api_router.delete("/my-store/knowledge/{entry_id}")
+def delete_kb_entry(
+    entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_store_admin),
+):
+    entry = db.query(KnowledgeEntry).filter(
+        KnowledgeEntry.id == entry_id,
+        KnowledgeEntry.tenant_id == current_user.tenant_id,
+    ).first()
+    if not entry:
+        raise HTTPException(status_code=404, detail="Entry not found")
+    db.delete(entry)
+    db.commit()
+    return {"detail": "Deleted"}
+
+
+# ── Agent Management (by store admin) ────────────────────────────────────────
+
+@api_router.get("/my-store/agents", response_model=List[UserResponse])
+def list_store_agents(db: Session = Depends(get_db), current_user: User = Depends(require_store_admin)):
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No store associated")
+    return db.query(User).filter(
+        User.tenant_id == current_user.tenant_id,
+        User.role == "agent",
+    ).all()
+
+@api_router.post("/my-store/agents", response_model=UserResponse)
+def add_agent(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_store_admin),
+):
+    """Register a new support agent and assign them to this store."""
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="No store associated")
+    if db.query(User).filter(User.email == payload.email).first():
+        raise HTTPException(status_code=400, detail="Email already registered")
+    agent = User(
+        email=payload.email,
+        hashed_password=get_password_hash(payload.password),
+        full_name=payload.full_name,
+        role="agent",
+        tenant_id=current_user.tenant_id,
+        is_active=True,
+    )
+    db.add(agent)
+    db.commit()
+    db.refresh(agent)
+    return agent
+
+@api_router.delete("/my-store/agents/{user_id}")
+def remove_agent(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_store_admin),
+):
+    agent = db.query(User).filter(
+        User.id == user_id,
+        User.tenant_id == current_user.tenant_id,
+        User.role == "agent",
+    ).first()
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found in your store")
+    db.delete(agent)
+    db.commit()
+    return {"detail": "Agent removed"}
+
+
+# ── Store analytics ───────────────────────────────────────────────────────────
+
+@api_router.get("/my-store/stats")
+def get_my_store_stats(db: Session = Depends(get_db), current_user: User = Depends(require_store_admin)):
+    tid = current_user.tenant_id
+    if not tid:
+        raise HTTPException(status_code=400, detail="No store associated")
+    return {
+        "total_tickets":   db.query(func.count(Ticket.id)).filter(Ticket.tenant_id == tid).scalar() or 0,
+        "open_tickets":    db.query(func.count(Ticket.id)).filter(Ticket.tenant_id == tid, Ticket.status == "open").scalar() or 0,
+        "conversations":   db.query(func.count(Conversation.id)).filter(Conversation.tenant_id == tid).scalar() or 0,
+        "kb_entries":      db.query(func.count(KnowledgeEntry.id)).filter(KnowledgeEntry.tenant_id == tid).scalar() or 0,
+        "agents":          db.query(func.count(User.id)).filter(User.tenant_id == tid, User.role == "agent").scalar() or 0,
+    }
+
+
+# ============================================================
+# 12. WIDGET API  (API-key auth — for embedded storefronts)
+# ============================================================
+
+@api_router.get("/widget/config")
+def widget_config(tenant: Tenant = Depends(get_tenant_from_api_key)):
+    """Return widget display config (color, welcome message) for a store's embed."""
+    return {
+        "store_name":       tenant.name,
+        "widget_color":     tenant.widget_color,
+        "welcome_message":  tenant.welcome_message,
+    }
+
+@api_router.post("/widget/chat")
+def widget_chat(
+    message_in: str = Form(...),
+    session_id: str = Form(...),
+    db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_tenant_from_api_key),
+):
+    """Chat endpoint for embedded widgets — authenticated via X-Api-Key header."""
+    conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+    if not conv:
+        conv = Conversation(session_id=session_id, title=message_in[:40] + "...", tenant_id=tenant.id)
+        db.add(conv)
+        db.commit()
+        db.refresh(conv)
+
+    history = []
+    recent_msgs = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.id.desc()).limit(10).all()
+    for msg in reversed(recent_msgs):
+        history.append(HumanMessage(content=msg.content) if msg.sender == "user" else AIMessage(content=msg.content))
+
+    state_input = {
+        "messages": history,
+        "current_message": message_in,
+        "session_id": session_id,
+        "tenant_id": tenant.id,
+        "ticket_escalated": False,
+        "ticket_id": None,
+        "answer": "",
+        "confidence_score": 1.0,
+        "sources": [],
+    }
+    graph_output = support_graph.invoke(state_input)
+
+    answer           = graph_output.get("answer", "")
+    confidence       = graph_output.get("confidence_score", 1.0)
+    sources          = graph_output.get("sources", [])
+    lang             = graph_output.get("detected_language", "en")
+    sentiment        = graph_output.get("detected_sentiment", "neutral")
+    ticket_escalated = graph_output.get("ticket_escalated", False)
+    tkt_id           = graph_output.get("ticket_id", None)
+
+    # Tag tickets with tenant
+    if ticket_escalated and tkt_id:
+        db.query(Ticket).filter(Ticket.ticket_id == tkt_id).update({"tenant_id": tenant.id})
+
+    db.add(Message(conversation_id=conv.id, sender="user", content=message_in))
+    db.add(Message(conversation_id=conv.id, sender="bot", content=answer,
+                   confidence_score=confidence, sources=json.dumps(sources)))
+    conv.language = lang
+    conv.sentiment = sentiment
+    db.commit()
+
+    return {
+        "answer": answer,
+        "confidence_score": confidence,
+        "sources": sources,
+        "language": lang,
+        "sentiment": sentiment,
+        "ticket_escalated": ticket_escalated,
+        "ticket_id": tkt_id,
+    }
 

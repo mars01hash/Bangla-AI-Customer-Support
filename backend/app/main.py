@@ -2,9 +2,10 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import uuid
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.models import User, Order
+from app.models import User, Order, Tenant
 from app.auth import get_password_hash
 from app.api.endpoints import api_router
 from app.rag.vectorstore import vector_store
@@ -21,49 +22,135 @@ logger.info("Initializing database schemas...")
 Base.metadata.create_all(bind=engine)
 
 def seed_database():
-    """Seed base roles and RAG documents so system works out of the box."""
+    """Seed base roles, tenants, and RAG documents so system works out of the box."""
     db = SessionLocal()
     try:
-        # Check and seed default Admin User
-        admin = db.query(User).filter(User.email == "admin@example.com").first()
-        if not admin:
-            admin_user = User(
+        # ── 1. Super Admin (platform owner) ──────────────────────────────────
+        super_admin = db.query(User).filter(User.email == "super@platform.com").first()
+        if not super_admin:
+            super_admin = User(
+                email="super@platform.com",
+                hashed_password=get_password_hash("superpassword123"),
+                full_name="Platform Super Admin",
+                role="super_admin",
+                is_active=True,
+            )
+            db.add(super_admin)
+            logger.info("Super admin seeded: super@platform.com / superpassword123")
+
+        # Legacy admin alias — keep existing integrations working
+        legacy_admin = db.query(User).filter(User.email == "admin@example.com").first()
+        if not legacy_admin:
+            legacy_admin = User(
                 email="admin@example.com",
                 hashed_password=get_password_hash(settings.ADMIN_INITIAL_PASSWORD),
                 full_name="System Administrator",
-                role="admin",
-                is_active=True
+                role="super_admin",
+                is_active=True,
             )
-            db.add(admin_user)
-            logger.info("Default administrator seeded: admin@example.com / adminpassword123")
-            
-        # Check and seed default Support Agent User
-        agent = db.query(User).filter(User.email == "agent@example.com").first()
-        if not agent:
-            agent_user = User(
-                email="agent@example.com",
+            db.add(legacy_admin)
+            logger.info("Legacy admin seeded: admin@example.com / adminpassword123")
+
+        db.commit()
+
+        # ── 2. Demo Tenant: ShopBD ────────────────────────────────────────────
+        shopbd = db.query(Tenant).filter(Tenant.name == "ShopBD").first()
+        if not shopbd:
+            shopbd = Tenant(
+                id=str(uuid.uuid4()),
+                name="ShopBD",
+                domain="shopbd.com",
+                api_key="sk_shopbd_demo_" + uuid.uuid4().hex[:12],
+                plan="pro",
+                widget_color="#6366f1",
+                welcome_message="হ্যালো! ShopBD-তে স্বাগতম। কীভাবে সাহায্য করতে পারি?",
+            )
+            db.add(shopbd)
+            db.commit()
+            db.refresh(shopbd)
+            logger.info(f"Demo tenant ShopBD created — API key: {shopbd.api_key}")
+
+        # ShopBD store admin
+        shopbd_admin = db.query(User).filter(User.email == "admin@shopbd.com").first()
+        if not shopbd_admin:
+            shopbd_admin = User(
+                email="admin@shopbd.com",
+                hashed_password=get_password_hash("storepassword123"),
+                full_name="ShopBD Admin",
+                role="store_admin",
+                tenant_id=shopbd.id,
+                is_active=True,
+            )
+            db.add(shopbd_admin)
+            logger.info("ShopBD store admin seeded: admin@shopbd.com / storepassword123")
+
+        # ShopBD support agent
+        shopbd_agent = db.query(User).filter(User.email == "agent@shopbd.com").first()
+        if not shopbd_agent:
+            shopbd_agent = User(
+                email="agent@shopbd.com",
                 hashed_password=get_password_hash("agentpassword123"),
                 full_name="Agent Rahat",
                 role="agent",
-                is_active=True
+                tenant_id=shopbd.id,
+                is_active=True,
             )
-            db.add(agent_user)
-            logger.info("Default support agent seeded: agent@example.com / agentpassword123")
-            
-        # Check and seed default Customer User
-        customer = db.query(User).filter(User.email == "customer@example.com").first()
-        if not customer:
-            customer_user = User(
+            db.add(shopbd_agent)
+            logger.info("ShopBD agent seeded: agent@shopbd.com / agentpassword123")
+
+        # ── 3. Demo Tenant: FashionBD ─────────────────────────────────────────
+        fashionbd = db.query(Tenant).filter(Tenant.name == "FashionBD").first()
+        if not fashionbd:
+            fashionbd = Tenant(
+                id=str(uuid.uuid4()),
+                name="FashionBD",
+                domain="fashionbd.com.bd",
+                api_key="sk_fashionbd_demo_" + uuid.uuid4().hex[:12],
+                plan="free",
+                widget_color="#ec4899",
+                welcome_message="Hello! Welcome to FashionBD. How can I help you today?",
+            )
+            db.add(fashionbd)
+            db.commit()
+            db.refresh(fashionbd)
+            logger.info(f"Demo tenant FashionBD created — API key: {fashionbd.api_key}")
+
+        fashionbd_admin = db.query(User).filter(User.email == "admin@fashionbd.com").first()
+        if not fashionbd_admin:
+            fashionbd_admin = User(
+                email="admin@fashionbd.com",
+                hashed_password=get_password_hash("storepassword123"),
+                full_name="FashionBD Admin",
+                role="store_admin",
+                tenant_id=fashionbd.id,
+                is_active=True,
+            )
+            db.add(fashionbd_admin)
+            logger.info("FashionBD store admin seeded: admin@fashionbd.com / storepassword123")
+
+        # ── 4. Legacy agent/customer (backward compat) ────────────────────────
+        legacy_agent = db.query(User).filter(User.email == "agent@example.com").first()
+        if not legacy_agent:
+            db.add(User(
+                email="agent@example.com",
+                hashed_password=get_password_hash("agentpassword123"),
+                full_name="Agent Legacy",
+                role="agent",
+                tenant_id=shopbd.id,
+                is_active=True,
+            ))
+        legacy_customer = db.query(User).filter(User.email == "customer@example.com").first()
+        if not legacy_customer:
+            db.add(User(
                 email="customer@example.com",
                 hashed_password=get_password_hash("customerpassword123"),
                 full_name="Tahmid Hasan",
                 role="customer",
-                is_active=True
-            )
-            db.add(customer_user)
-            logger.info("Default customer account seeded: customer@example.com / customerpassword123")
-            
+                is_active=True,
+            ))
+
         db.commit()
+        logger.info("All users and tenants seeded successfully.")
     except Exception as e:
         logger.error(f"Error seeding user accounts: {e}")
         db.rollback()
