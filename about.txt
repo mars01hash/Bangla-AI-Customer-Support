@@ -1,0 +1,3 @@
+Built a multi-tenant SaaS chatbot platform where super admins manage stores, 
+store admins embed the widget and manage 
+their own knowledge base, and agents handle tickets.
