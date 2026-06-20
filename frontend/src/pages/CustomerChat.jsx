@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Send, Volume2, Mic, CheckCircle, ShieldAlert, Sparkles, BookOpen, ThumbsUp, ThumbsDown } from 'lucide-react'
+import { API_BASE } from '../config.js'
 
 function CustomerChat() {
   const [sessionId] = useState(() => 'session-' + Math.random().toString(36).substr(2, 9))
@@ -52,7 +53,7 @@ function CustomerChat() {
       formData.append('message_in', text)
       formData.append('session_id', sessionId)
 
-      const response = await fetch('http://localhost:8090/api/chat', {
+      const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         body: formData
       })
@@ -107,7 +108,7 @@ function CustomerChat() {
       formData.append('text', text)
       formData.append('lang', lang)
 
-      const response = await fetch('http://localhost:8090/api/voice/tts', {
+      const response = await fetch(`${API_BASE}/api/voice/tts`, {
         method: 'POST',
         body: formData
       })
@@ -145,7 +146,7 @@ function CustomerChat() {
         const fileData = new FormData()
         fileData.append('file', blob, 'recording.wav')
         try {
-          const response = await fetch('http://localhost:8090/api/voice/stt', {
+          const response = await fetch(`${API_BASE}/api/voice/stt`, {
             method: 'POST',
             body: fileData
           })
@@ -169,7 +170,7 @@ function CustomerChat() {
 
   const handleFeedback = async (rating) => {
     try {
-      await fetch('http://localhost:8090/api/feedback', {
+      await fetch(`${API_BASE}/api/feedback`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

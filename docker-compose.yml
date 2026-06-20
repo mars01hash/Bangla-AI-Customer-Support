@@ -1,84 +1,34 @@
-version: '3.8'
-
 services:
-  # 1. PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: customer_support_db
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword123
-      POSTGRES_DB: support_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d support_db"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  # 2. FastAPI Backend
   backend:
     build:
-      context: .
-      dockerfile: deployment/Dockerfile.backend
-    container_name: customer_support_backend
-    restart: always
-    ports:
-      - "8000:8000"
+      context: ./backend
+    restart: unless-stopped
+    env_file: .env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgrespassword123@db:5432/support_db
-      - CHROMA_PERSIST_DIRECTORY=/app/chroma_db
-      - LLM_PROVIDER=mock
-      - LLM_API_KEY=mock-key
-      - EMBEDDING_MODEL_NAME=sentence-transformers/LaBSE
+      - DATABASE_URL=sqlite:////data/support_platform.db
+      - CHROMA_PERSIST_DIRECTORY=/data/chroma_db
     volumes:
-      - chroma_data:/app/chroma_db
-      - uploads_data:/app/uploads
-    depends_on:
-      db:
-        condition: service_healthy
+      - app_data:/data
+      - uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
 
-  # 3. React Frontend served by Nginx
   frontend:
     build:
-      context: .
-      dockerfile: deployment/Dockerfile.frontend
-    container_name: customer_support_frontend
-    restart: always
+      context: ./frontend
+      args:
+        VITE_API_URL: ""
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
-      - backend
-
-  # 4. Prometheus Monitoring Metrics Scraper
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: customer_support_prometheus
-    restart: always
-    volumes:
-      - ./deployment/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - "9090:9090"
-    depends_on:
-      - backend
-
-  # 5. Grafana Monitoring Panel
-  grafana:
-    image: grafana/grafana:latest
-    container_name: customer_support_grafana
-    restart: always
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    depends_on:
-      - prometheus
+      backend:
+        condition: service_healthy
 
 volumes:
-  postgres_data:
-  chroma_data:
-  uploads_data:
+  app_data:
+  uploads:

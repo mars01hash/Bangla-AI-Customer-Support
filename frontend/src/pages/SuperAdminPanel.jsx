@@ -4,7 +4,7 @@ import {
   CheckCircle, XCircle, ChevronRight, BarChart2, Shield, Edit2, RotateCcw, X,
 } from 'lucide-react'
 
-const API = 'http://localhost:8090'
+import { API_BASE as API } from '../config.js'
 
 const PLAN_BADGE = {
   free:       'bg-slate-700 text-slate-300',

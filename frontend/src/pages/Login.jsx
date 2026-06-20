@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { KeyRound, Mail, AlertCircle, Loader, Crown, Store, Shield, Users } from 'lucide-react'
+import { API_BASE } from '../config.js'
 
 const DEMO_ACCOUNTS = [
   { role: 'super_admin', email: 'super@platform.com', pass: 'superpassword123', label: 'Super Admin', icon: Crown, color: 'text-amber-400' },
@@ -22,7 +23,7 @@ function Login({ onLoginSuccess }) {
       const fd = new FormData()
       fd.append('username', email)
       fd.append('password', password)
-      const res = await fetch('http://localhost:8090/api/auth/token', { method: 'POST', body: fd })
+      const res = await fetch(`${API_BASE}/api/auth/token`, { method: 'POST', body: fd })
       if (!res.ok) {
         const err = await res.json()
         throw new Error(err.detail || 'Authentication failed.')

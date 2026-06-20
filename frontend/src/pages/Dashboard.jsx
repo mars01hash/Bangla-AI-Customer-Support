@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { API_BASE } from '../config.js'
 import {
   Users, Ticket, Heart, Clock, Upload, ArrowUpRight,
   CheckCircle, RefreshCw, Filter, FileText, Check, AlertTriangle,
@@ -56,14 +57,14 @@ function Dashboard({ token, role }) {
       const headers = { 'Authorization': `Bearer ${token}` }
       
       // Fetch summary
-      const sumRes = await fetch('http://localhost:8090/api/analytics/summary', { headers })
+      const sumRes = await fetch(`${API_BASE}/api/analytics/summary`, { headers })
       if (sumRes.ok) {
         const sumData = await sumRes.json()
         setSummary(sumData)
       }
       
       // Fetch charts
-      const chartRes = await fetch('http://localhost:8090/api/analytics/charts', { headers })
+      const chartRes = await fetch(`${API_BASE}/api/analytics/charts`, { headers })
       if (chartRes.ok) {
         const cData = await chartRes.json()
         setChartData(cData)
@@ -76,7 +77,7 @@ function Dashboard({ token, role }) {
   const fetchTickets = async () => {
     try {
       const headers = { 'Authorization': `Bearer ${token}` }
-      let url = 'http://localhost:8090/api/tickets?'
+      let url = `${API_BASE}/api/tickets?`
       if (statusFilter) url += `status=${statusFilter}&`
       if (priorityFilter) url += `priority=${priorityFilter}&`
       
@@ -93,7 +94,7 @@ function Dashboard({ token, role }) {
   const fetchOrders = async () => {
     try {
       const headers = { 'Authorization': `Bearer ${token}` }
-      let url = 'http://localhost:8090/api/orders'
+      let url = `${API_BASE}/api/orders`
       if (orderStatusFilter) url += `?status=${orderStatusFilter}`
       const res = await fetch(url, { headers })
       if (res.ok) setOrders(await res.json())
@@ -104,7 +105,7 @@ function Dashboard({ token, role }) {
 
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
     try {
-      await fetch(`http://localhost:8090/api/orders/${orderId}`, {
+      await fetch(`${API_BASE}/api/orders/${orderId}`, {
         method: 'PUT',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
@@ -126,7 +127,7 @@ function Dashboard({ token, role }) {
         total_amount: parseFloat(newOrder.total_amount) || 0,
         estimated_delivery: newOrder.estimated_delivery || null
       }
-      const res = await fetch('http://localhost:8090/api/orders', {
+      const res = await fetch(`${API_BASE}/api/orders`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -146,7 +147,7 @@ function Dashboard({ token, role }) {
   const handleDeleteOrder = async (orderId) => {
     if (!window.confirm(`Delete order ${orderId}?`)) return
     try {
-      await fetch(`http://localhost:8090/api/orders/${orderId}`, {
+      await fetch(`${API_BASE}/api/orders/${orderId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       })
@@ -168,7 +169,7 @@ function Dashboard({ token, role }) {
   // Update ticket details (resolve/assign)
   const handleUpdateTicket = async (ticketId, updatePayload) => {
     try {
-      const response = await fetch(`http://localhost:8090/api/tickets/${ticketId}`, {
+      const response = await fetch(`${API_BASE}/api/tickets/${ticketId}`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -198,7 +199,7 @@ function Dashboard({ token, role }) {
       const formData = new FormData()
       formData.append('file', uploadFile)
       
-      const response = await fetch('http://localhost:8090/api/upload', {
+      const response = await fetch(`${API_BASE}/api/upload`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

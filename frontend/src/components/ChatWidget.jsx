@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { MessageCircle, X, Send, Minimize2, Bot } from 'lucide-react'
 
-const API_BASE = 'http://localhost:8090'
+import { API_BASE } from '../config.js'
 
 const QUICK_PROMPTS = [
   'অর্ডার ট্র্যাক করুন',

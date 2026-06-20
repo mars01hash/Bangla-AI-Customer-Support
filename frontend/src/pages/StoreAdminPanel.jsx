@@ -5,7 +5,7 @@ import {
   BarChart2, MessageSquare, Globe, Palette, X, AlertCircle,
 } from 'lucide-react'
 
-const API = 'http://localhost:8090'
+import { API_BASE as API } from '../config.js'
 
 const TICKET_STATUS_CLS = {
   open:        'bg-rose-500/10 text-rose-400 border border-rose-500/20',

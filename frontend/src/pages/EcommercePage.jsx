@@ -5,8 +5,7 @@ import {
   ChevronRight, MessageCircle, RotateCcw, ChevronDown, ListOrdered, Loader2,
 } from 'lucide-react'
 import ChatWidget from '../components/ChatWidget.jsx'
-
-const API = 'http://localhost:8090'
+import { API_BASE as API } from '../config.js'
 const ORDERS_KEY = 'shopbd_orders'
 
 // ── Data ──────────────────────────────────────────────────────────────────────

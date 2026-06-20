@@ -122,3 +122,13 @@ Notes:
   - Each Telegram user gets their own session (telegram-<chat_id>)
   - Escalated tickets are created automatically and shown in the dashboard
   - Do not run polling and webhook at the same time for the same bot token
+
+---------------------------------
+
+To run anywhere with Docker:
+  cp .env.example .env
+  # edit .env — set LLM_PROVIDER and LLM_API_KEY
+  docker compose up --build
+
+  Frontend will be at http://localhost, API at http://localhost/api/. The first build takes a few minutes to download and bake
+  the LaBSE model into the backend image (~800MB), but subsequent starts are fast.
