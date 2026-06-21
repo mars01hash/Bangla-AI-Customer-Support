@@ -4,11 +4,11 @@
 
 | Name | Student ID |
 |---|---|
-| Muntasir | [YOUR STUDENT ID] |
+| Muntasir Abdullah mizan | 1000060750 |
 
 **Submission Date:** 25/06/2026
 
-**Advanced Training on Semiconductor and ICT Technology — BRAC University**
+**Certificate on Machine Learning and Deep Learning**
 
 ---
 
