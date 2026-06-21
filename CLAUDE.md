@@ -59,3 +59,7 @@ For multi-step tasks, state a brief plan:
 ```
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+## 5. Commit Messages
+
+Never add `Co-Authored-By: Claude` or any AI authorship trailer to commit messages.
