@@ -77,6 +77,11 @@ coverage.xml
 *.cover
 .hypothesis/
 
+# Log / runtime output files
+*.log
+backend/uvicorn_err.txt
+backend/uvicorn_out.txt
+
 # System Files
 .DS_Store
 Thumbs.db
