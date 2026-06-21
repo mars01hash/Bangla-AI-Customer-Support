@@ -91,3 +91,6 @@ Thumbs.db
 
 # MkDocs build output
 site/
+
+# Strategy documents
+GTM_STRATEGY.md
