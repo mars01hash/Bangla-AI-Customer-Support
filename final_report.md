@@ -476,5 +476,24 @@ Key learning from the project: multi-tenant data isolation at the vector store l
 
 ## Appendix
 
-LLM - Lage Language Model 
-LaBSE - Language-agnostic BERT Sentence Encoder
+### List of Abbreviations
+
+| Abbreviation | Full Form |
+|---|---|
+| AI | Artificial Intelligence |
+| API | Application Programming Interface |
+| BERT | Bidirectional Encoder Representations from Transformers |
+| DB | Database |
+| FAQ | Frequently Asked Questions |
+| HTTP | Hypertext Transfer Protocol |
+| JSON | JavaScript Object Notation |
+| JWT | JSON Web Token |
+| KB | Knowledge Base |
+| LaBSE | Language-agnostic BERT Sentence Embedding |
+| LLM | Large Language Model |
+| NLP | Natural Language Processing |
+| ORM | Object-Relational Mapping |
+| RAG | Retrieval-Augmented Generation |
+| REST | Representational State Transfer |
+| SaaS | Software as a Service |
+| UI | User Interface |
