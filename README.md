@@ -33,7 +33,7 @@ A production-grade, multi-tenant SaaS chatbot platform built for Bangladeshi eco
 **Tech stack:**
 - **Backend**: FastAPI + LangGraph + ChromaDB + SQLite/PostgreSQL
 - **Frontend**: React 18 + Vite + Tailwind CSS
-- **AI**: OpenAI GPT-4o-mini, LaBSE sentence embeddings
+- **AI**: OpenAI / Groq / OpenRouter / HuggingFace LLMs + LaBSE sentence embeddings
 - **Integrations**: Telegram Bot, Prometheus metrics
 
 ---
@@ -62,7 +62,7 @@ venv\Scripts\activate          # Windows
 # source venv/bin/activate     # Mac/Linux
 pip install -r requirements.txt
 
-# Copy env file and add your OpenAI key
+# Copy env file and configure your LLM provider
 cp .env.example .env
 
 uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
@@ -101,21 +101,40 @@ docker-compose up --build
 
 ## Environment Variables
 
-`backend/.env`:
+Copy `backend/.env.example` to `backend/.env` and fill in your values:
 
 ```env
-# Required for real AI responses
-OPENAI_API_KEY=sk-proj-...
+# ── LLM Provider ──────────────────────────────────────────────────────────────
+# Options: mock | openai | groq | huggingface | openrouter
+LLM_PROVIDER=openrouter
+LLM_API_KEY=sk-or-v1-...
 
-# Optional — Telegram bot
-TELEGRAM_BOT_TOKEN=123456789:ABC-...
+# Model name depends on provider:
+#   openai:     gpt-4o-mini
+#   groq:       llama-3.3-70b-versatile
+#   openrouter: nvidia/nemotron-3-super-120b-a12b:free
+LLM_MODEL_NAME=nvidia/nemotron-3-super-120b-a12b:free
 
-# Optional — override defaults
+# ── Database ──────────────────────────────────────────────────────────────────
 DATABASE_URL=sqlite:///./support_platform.db
-LLM_PROVIDER=openai
+# DATABASE_URL=postgresql://user:password@localhost:5432/support_db
+
+# ── Vector Store ──────────────────────────────────────────────────────────────
+CHROMA_PERSIST_DIRECTORY=./chroma_db
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
 JWT_SECRET=change-me-in-production
-ADMIN_INITIAL_PASSWORD=adminpassword123
+
+# ── Telegram Bot (optional) ───────────────────────────────────────────────────
+TELEGRAM_BOT_TOKEN=
 ```
+
+**LLM provider notes:**
+- `mock` — no API key needed; returns empty strings (heuristic fallbacks kick in)
+- `openai` — set `LLM_API_KEY` to your `sk-proj-...` key
+- `groq` — free tier available at console.groq.com
+- `openrouter` — free models available (e.g. `nvidia/nemotron-3-super-120b-a12b:free`)
+- `huggingface` — set `LLM_API_KEY` to your HF token
 
 ---
 
@@ -191,19 +210,35 @@ Store admins copy their embed snippet from the **Embed Code** tab:
 User Message
      │
      ▼
-Language Detection → Sentiment Analysis
+Language & Sentiment Detection
      │
      ▼
 Router Node
-  ├── greeting    → Greeting Node
-  ├── faq         → FAQ Node (ChromaDB RAG, tenant-scoped)
-  ├── order       → Order Node (SQLite lookup by order ID)
-  ├── billing     → Billing Node (asks clarifying question first)
-  ├── complaint   → Complaint Node (asks what went wrong first)
-  └── escalation  → Escalation Node (creates support ticket)
+  ├── greeting        → Greeting Node
+  ├── faq             → FAQ Node (ChromaDB RAG, tenant-scoped)
+  │                         └── [low confidence] → Escalation Node
+  ├── product         → Product Node (compare, recommend, browse, lookup)
+  ├── order           → Order Status Node (DB lookup by order ID)
+  ├── order_placement → Order Placement Node (multi-turn: collects details → creates order)
+  ├── billing         → Billing Node
+  ├── complaint       → Complaint Node → Escalation Node
+  └── escalation      → Escalation Node (creates support ticket)
 ```
 
-**Clarification-first behaviour:** The bot asks a clarifying question before creating any support ticket. On the follow-up turn, it collects the user's details and then creates the ticket — producing more useful descriptions for agents.
+**Buy intent detection** — The router recognises purchase intent across English, Bangla, and Banglish:
+- English: `"i want to buy"`, `"order now"`, `"place order"`, …
+- Bangla: `"কিনতে চাই"`, `"অর্ডার করতে চাই"`, `"নিতে চাই"`, …
+- Banglish: `"order korbo"`, `"kinbo"`, `"order debo"`, …
+
+**Order placement flow (multi-turn):**
+1. Customer expresses buy intent → routed to `order_placement`
+2. Bot asks for full name → mobile number → delivery address (one field per turn)
+3. On completion, an `Order` row and a staff `Ticket` are created in the database
+4. Bot confirms with the generated Order ID
+
+**Clarification-first behaviour** — The bot asks a clarifying question before creating any support ticket. On the follow-up turn it collects the user's details and creates the ticket, producing more useful descriptions for agents.
+
+**Language options** — The chat widget includes a language toggle (Bangla / English). The selected language is passed as `preferred_language` through the agent state and respected by every node's response.
 
 ---
 
@@ -297,9 +332,9 @@ nlp-customer-support-bangla/
 ├── backend/
 │   ├── app/
 │   │   ├── agents/
-│   │   │   ├── graph.py        # LangGraph StateGraph
+│   │   │   ├── graph.py        # LangGraph StateGraph + routing edges
 │   │   │   ├── nodes.py        # All agent node implementations
-│   │   │   └── state.py        # AgentState TypedDict (incl. tenant_id)
+│   │   │   └── state.py        # AgentState TypedDict (incl. tenant_id, preferred_language)
 │   │   ├── api/
 │   │   │   └── endpoints.py    # All FastAPI routes
 │   │   ├── rag/
@@ -307,12 +342,13 @@ nlp-customer-support-bangla/
 │   │   │   ├── embedder.py     # LaBSE sentence embeddings
 │   │   │   └── ingestion.py    # Document chunking + indexing
 │   │   ├── auth.py             # JWT + API-key authentication + role guards
-│   │   ├── models.py           # SQLAlchemy ORM (Tenant, User, Ticket, KnowledgeEntry…)
+│   │   ├── models.py           # SQLAlchemy ORM (Tenant, User, Ticket, Order, Product…)
 │   │   ├── schemas.py          # Pydantic request/response schemas
 │   │   ├── database.py         # SQLAlchemy engine + session
 │   │   ├── config.py           # Settings loaded from .env
 │   │   └── main.py             # FastAPI app + DB schema init + seeding
 │   ├── telegram_poll.py        # Telegram polling mode
+│   ├── .env.example            # Environment variable template
 │   └── requirements.txt
 ├── frontend/
 │   └── src/
@@ -324,11 +360,11 @@ nlp-customer-support-bangla/
 │       │   ├── CustomerChat.jsx    # Standalone chat demo
 │       │   └── Login.jsx           # Multi-role login with one-click demo shortcuts
 │       ├── components/
-│       │   └── ChatWidget.jsx      # Floating chat widget (auto-sends prefilled messages)
+│       │   └── ChatWidget.jsx      # Floating chat widget (language toggle, auto-send)
 │       └── App.jsx                 # Role-based routing (super_admin/store_admin/agent/customer)
 ├── deployment/
 │   └── docker-compose.yml
-├── run.txt                         # Quick start reference card
+├── .env.example                    # Root-level env reference
 └── README.md
 ```
 
@@ -340,6 +376,12 @@ nlp-customer-support-bangla/
 
 **Tenant-scoped ChromaDB** — Knowledge base entries are indexed with `{"tenant_id": "..."}` metadata. The FAQ agent filters by this field, then falls back to the global collection. This avoids managing separate vector databases per tenant while still isolating content.
 
+**Order placement via multi-turn collection** — When buy intent is detected the bot enters a dedicated `order_placement` node that tracks which fields (name / mobile / address) have already been collected by inspecting message history. This keeps the node stateless — no server-side session needed.
+
+**Banglish intent recognition** — Bangladeshi users frequently mix English words with Bangla grammar (e.g. "order korbo", "kinbo"). Affirmative and buy-intent checks include Banglish patterns so the router handles mixed-script input without needing an LLM call.
+
 **Clarification before escalation** — The `_has_pending_clarification()` helper checks whether the last AI message was a question. If so, subsequent replies are routed directly to ticket creation rather than asking again. This prevents the bot from repeatedly asking the same question.
 
-**Module-scope checkout components** — React re-mounts a component when its constructor reference changes between renders. Defining `CheckoutView` and `PaymentView` as inner functions of `EcommercePage` caused the form inputs to re-mount on every keystroke. Moving them to module scope (with their own local `useState`) fixed the input lag entirely.
+**Provider-agnostic LLM layer** — `query_llm_api()` in `nodes.py` supports OpenAI, Groq, OpenRouter, and HuggingFace behind a single interface. Setting `LLM_PROVIDER=mock` disables all external calls, making local development and testing cost-free.
+
+**Module-scope checkout components** — React re-mounts a component when its constructor reference changes between renders. Defining `CheckoutView` and `PaymentView` as inner functions of `EcommercePage` caused form inputs to re-mount on every keystroke. Moving them to module scope (with their own local `useState`) fixed the input lag entirely.
