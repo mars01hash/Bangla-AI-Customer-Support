@@ -220,7 +220,8 @@ def language_sentiment_detector_node(state: AgentState) -> Dict[str, Any]:
     """Node: Analyzes language, sentiment, and classifies customer intent."""
     current_message = state["current_message"]
 
-    lang = detect_language_heuristics(current_message)
+    preferred = state.get("preferred_language")
+    lang = preferred if preferred in ("bn", "en") else detect_language_heuristics(current_message)
     sentiment = detect_sentiment_heuristics(current_message)
     category = classify_intent_heuristics(current_message)
 

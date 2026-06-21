@@ -2,24 +2,34 @@ import React, { useState, useEffect, useRef } from 'react'
 import { Send, Volume2, Mic, CheckCircle, ShieldAlert, Sparkles, BookOpen, ThumbsUp, ThumbsDown } from 'lucide-react'
 import { API_BASE } from '../config.js'
 
+const WELCOME = {
+  bn: 'হ্যালো! আমি আপনার কাস্টমার সাপোর্ট সহকারী। আজ আপনাকে কীভাবে সাহায্য করতে পারি?',
+  en: 'Hello! I am your customer support assistant. How can I help you today?'
+}
+
 function CustomerChat() {
   const [sessionId] = useState(() => 'session-' + Math.random().toString(36).substr(2, 9))
-  const [messages, setMessages] = useState([
-    {
-      sender: 'bot',
-      content: 'হ্যালো! আমি আপনার কাস্টমার সাপোর্ট সহকারী। আজ আপনাকে কীভাবে সাহায্য করতে পারি? (Hello! How can I help you today?)',
-      timestamp: new Date().toISOString(),
-      confidence_score: 1.0,
-      sources: []
-    }
-  ])
+  const [preferredLanguage, setPreferredLanguage] = useState(null) // null = not chosen yet
+  const [messages, setMessages] = useState([])
   const [inputValue, setInputValue] = useState('')
   const [loading, setLoading] = useState(false)
   const [recording, setRecording] = useState(false)
-  
+
   // Real-time memory variables
   const [language, setLanguage] = useState('bn')
   const [sentiment, setSentiment] = useState('neutral')
+
+  const handleSelectLanguage = (lang) => {
+    setPreferredLanguage(lang)
+    setLanguage(lang)
+    setMessages([{
+      sender: 'bot',
+      content: WELCOME[lang],
+      timestamp: new Date().toISOString(),
+      confidence_score: 1.0,
+      sources: []
+    }])
+  }
   const [escalatedTicket, setEscalatedTicket] = useState(null)
   
   // Feedback tracker
@@ -52,6 +62,7 @@ function CustomerChat() {
       const formData = new FormData()
       formData.append('message_in', text)
       formData.append('session_id', sessionId)
+      if (preferredLanguage) formData.append('preferred_language', preferredLanguage)
 
       const response = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
@@ -187,6 +198,36 @@ function CustomerChat() {
     }
   }
 
+  if (!preferredLanguage) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-950/20 gap-8 p-8">
+        <div className="text-center space-y-2">
+          <Sparkles className="text-accentPurple mx-auto mb-4" size={32} />
+          <h2 className="text-2xl font-bold text-white">Choose Your Language</h2>
+          <p className="text-slate-400 text-sm">ভাষা নির্বাচন করুন / Select a language to begin</p>
+        </div>
+        <div className="flex gap-4">
+          <button
+            onClick={() => handleSelectLanguage('bn')}
+            className="flex flex-col items-center gap-3 bg-slate-900 hover:bg-accentPurple/20 border border-slate-700 hover:border-accentPurple text-white rounded-2xl px-10 py-8 transition-all duration-200 group"
+          >
+            <span className="text-4xl">🇧🇩</span>
+            <span className="text-lg font-semibold">বাংলা</span>
+            <span className="text-xs text-slate-400 group-hover:text-slate-300">Bangla</span>
+          </button>
+          <button
+            onClick={() => handleSelectLanguage('en')}
+            className="flex flex-col items-center gap-3 bg-slate-900 hover:bg-accentPurple/20 border border-slate-700 hover:border-accentPurple text-white rounded-2xl px-10 py-8 transition-all duration-200 group"
+          >
+            <span className="text-4xl">🇬🇧</span>
+            <span className="text-lg font-semibold">English</span>
+            <span className="text-xs text-slate-400 group-hover:text-slate-300">English</span>
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex-1 flex overflow-hidden max-h-[calc(100vh-73px)]">
       {/* 1. Sidebar Panel (Memory and Profile Diagnostics) */}
@@ -202,8 +243,10 @@ function CustomerChat() {
             </div>
             <div className="bg-slate-950/40 border border-slate-800 rounded-xl p-3 flex justify-between items-center">
               <div>
-                <p className="text-[10px] text-slate-500 font-mono">LANGUAGE DETECTED</p>
-                <p className="text-sm font-semibold text-slate-300 capitalize mt-0.5">{language}</p>
+                <p className="text-[10px] text-slate-500 font-mono">LANGUAGE</p>
+                <p className="text-sm font-semibold text-slate-300 capitalize mt-0.5">
+                  {preferredLanguage === 'bn' ? 'বাংলা' : 'English'}
+                </p>
               </div>
               <span className="w-2.5 h-2.5 rounded-full bg-accentPurple shadow-lg shadow-accentPurple/50" />
             </div>
@@ -239,9 +282,15 @@ function CustomerChat() {
 
         <div className="mt-auto bg-gradient-to-br from-accentPurple/10 to-transparent border border-accentPurple/10 rounded-2xl p-5 text-xs text-slate-400 leading-relaxed">
           <Sparkles className="text-accentPurple mb-2 animate-bounce" size={16} />
-          Try asking: <br />
-          <span className="italic text-slate-300">"আমার অর্ডার কোথায়?"</span> or <br />
-          <span className="italic text-slate-300">"পেমেন্ট পলিসি নিয়ে অভিযোগ আছে।"</span>
+          {preferredLanguage === 'bn' ? (
+            <>Try asking: <br />
+            <span className="italic text-slate-300">"আমার অর্ডার কোথায়?"</span> or <br />
+            <span className="italic text-slate-300">"পেমেন্ট পলিসি নিয়ে অভিযোগ আছে।"</span></>
+          ) : (
+            <>Try asking: <br />
+            <span className="italic text-slate-300">"Where is my order?"</span> or <br />
+            <span className="italic text-slate-300">"I have a complaint about payment."</span></>
+          )}
         </div>
       </aside>
 
@@ -336,11 +385,11 @@ function CustomerChat() {
               {feedbackSubmitted ? (
                 <div className="flex items-center gap-2 text-emerald-400 font-semibold mx-auto">
                   <CheckCircle size={14} />
-                  <span>আপনার রেটিং দেওয়ার জন্য ধন্যবাদ! (Thanks for rating!)</span>
+                  <span>{preferredLanguage === 'bn' ? 'আপনার রেটিং দেওয়ার জন্য ধন্যবাদ!' : 'Thanks for your rating!'}</span>
                 </div>
               ) : (
                 <>
-                  <span className="text-slate-400">এই উত্তরটি কি সাহায্য করেছে? (Was this helpful?)</span>
+                  <span className="text-slate-400">{preferredLanguage === 'bn' ? 'এই উত্তরটি কি সাহায্য করেছে?' : 'Was this response helpful?'}</span>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleFeedback(5)}
@@ -379,7 +428,7 @@ function CustomerChat() {
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && !loading && handleSendMessage()}
               disabled={loading}
-              placeholder="বাংলা বা ইংরেজিতে আপনার প্রশ্নটি লিখুন... (Write your question here...)"
+              placeholder={preferredLanguage === 'bn' ? 'আপনার প্রশ্নটি বাংলায় লিখুন...' : 'Type your message in English...'}
               className="flex-1 bg-slate-900/80 border border-slate-700/60 focus:border-accentPurple rounded-xl px-5 outline-none text-slate-200 text-sm placeholder:text-slate-500 transition-all duration-300 disabled:opacity-50"
             />
 

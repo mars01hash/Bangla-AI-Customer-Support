@@ -28,5 +28,8 @@ class AgentState(TypedDict):
     user_id: Optional[int]
     tenant_id: Optional[str]   # set when request comes from an embedded widget
 
+    # User-selected language preference ('bn' or 'en'); overrides auto-detection when set
+    preferred_language: Optional[str]
+
     # Final output
     answer: str

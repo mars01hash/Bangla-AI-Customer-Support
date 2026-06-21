@@ -122,6 +122,7 @@ manager = ConnectionManager()
 def chat_rest(
     message_in: str = Form(...),
     session_id: str = Form(...),
+    preferred_language: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
     """
@@ -150,6 +151,7 @@ def chat_rest(
         "messages": history,
         "current_message": message_in,
         "session_id": session_id,
+        "preferred_language": preferred_language if preferred_language in ("bn", "en") else None,
         "ticket_escalated": False,
         "ticket_id": None,
         "answer": "",
