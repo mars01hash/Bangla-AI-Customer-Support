@@ -3,7 +3,7 @@
 A production-grade, multi-tenant SaaS chatbot platform built for Bangladeshi ecommerce. Any ecommerce store can embed the AI-powered chat widget on their website, manage their own knowledge base, and route customer tickets to their support agents — all independently.
 
 **Domain:** NLP Customer Support  
-**Course:** Machine Learning & Deep Learning Certification — Final Project
+**Course:** Certificate on Machine Learning and Deep Learning
 
 ---
 
