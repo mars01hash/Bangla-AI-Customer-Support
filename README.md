@@ -24,9 +24,6 @@ A production-grade, multi-tenant SaaS chatbot platform built for Bangladeshi eco
 ### ShopBD Ecommerce Storefront
 ![Ecommerce Storefront](screenshots/ecommerce_storefront.png)
 
-### Docker — Full Stack Running
-![Docker Stack](screenshots/docker_running.png)
-
 ---
 
 ## Architecture Overview
