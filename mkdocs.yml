@@ -1,0 +1,81 @@
+site_name: Bangla AI Customer Support
+site_description: Production-grade multi-tenant AI chatbot platform for Bangladeshi ecommerce
+site_url: https://mars01hash.github.io/nlp-customer-support-bangla/
+repo_url: https://github.com/mars01hash/nlp-customer-support-bangla
+repo_name: mars01hash/nlp-customer-support-bangla
+edit_uri: edit/master/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Overview: getting-started/index.md
+    - Local Development: getting-started/local-dev.md
+    - Docker: getting-started/docker.md
+    - Environment Variables: getting-started/environment.md
+  - Architecture:
+    - System Overview: architecture/index.md
+    - Agent Workflow: architecture/agent-workflow.md
+    - Multi-Tenant Design: architecture/multi-tenant.md
+  - User Guide:
+    - Super Admin Panel: user-guide/super-admin.md
+    - Store Admin Panel: user-guide/store-admin.md
+    - Agent Dashboard: user-guide/agent-dashboard.md
+    - Embedding the Widget: user-guide/chat-widget.md
+  - Features:
+    - Order Placement Flow: features/order-placement.md
+    - Bangla & Banglish Support: features/bangla-banglish.md
+    - ShopBD Storefront Demo: features/storefront.md
+    - Telegram Bot: features/telegram.md
+  - API Reference:
+    - Public Endpoints: api-reference/public.md
+    - Store Admin Endpoints: api-reference/store-admin.md
+    - Super Admin Endpoints: api-reference/super-admin.md
+  - Pre-seeded Accounts: accounts.md
