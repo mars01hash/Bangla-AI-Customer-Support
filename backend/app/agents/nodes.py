@@ -201,7 +201,7 @@ def classify_intent_heuristics(text: str) -> str:
         "billing", "payment", "charge", "invoice", "receipt", "refund",
     ]
     order_words = [
-        "অর্ডার", "ডেলিভারি", "শিপিং", "কোথায়", "ট্র্যাক",
+        "অর্ডার", "ডেলিভারি", "শিপিং", "কোথায়", "ট্র্যাক", "কখন আসবে", "পৌঁছাবে",
         "order", "delivery", "shipping", "track", "package", "where is",
     ]
     complaint_words = [
