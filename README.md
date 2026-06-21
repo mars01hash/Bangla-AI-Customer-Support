@@ -4,6 +4,31 @@ A production-grade, multi-tenant SaaS chatbot platform built for Bangladeshi eco
 
 ---
 
+## Screenshots
+
+### Chat Widget — Bangla & English Support
+![Chat Widget](screenshots/chat_widget.png)
+
+### Customer Chat — Order Tracking
+![Order Tracking](screenshots/order_tracking.png)
+
+### Store Admin Panel — Knowledge Base Management
+![Store Admin Panel](screenshots/store_admin_panel.png)
+
+### Agent Dashboard — Ticket Queue
+![Agent Dashboard](screenshots/agent_dashboard.png)
+
+### Super Admin Panel — Tenant Management
+![Super Admin Panel](screenshots/super_admin_panel.png)
+
+### ShopBD Ecommerce Storefront
+![Ecommerce Storefront](screenshots/ecommerce_storefront.png)
+
+### Docker — Full Stack Running
+![Docker Stack](screenshots/docker_running.png)
+
+---
+
 ## Architecture Overview
 
 ```
