@@ -75,6 +75,7 @@ def _is_affirmative(text: str) -> bool:
         "yes", "yeah", "yep", "ok", "okay", "sure", "go ahead", "proceed",
         "please", "i want", "i'll", "let's go", "do it",
         "হ্যাঁ", "জি", "ঠিক আছে", "করুন", "দিন", "নিতে চাই", "কিনতে চাই",
+        "korbo", "kinbo", "nebo", "debo",  # Banglish affirmatives
     ])
 
 
@@ -85,6 +86,7 @@ def _has_buy_intent(text: str) -> bool:
         "buy now", "place order", "order now", "add to cart", "purchase this",
         "কিনতে চাই", "অর্ডার করতে চাই", "অর্ডার দিতে চাই", "নিতে চাই",
         "কিনব", "অর্ডার করব", "এটা চাই",
+        "order korbo", "kinbo", "order debo",  # Banglish buy intent
     ])
 
 
