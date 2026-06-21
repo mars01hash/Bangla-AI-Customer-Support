@@ -476,21 +476,5 @@ Key learning from the project: multi-tenant data isolation at the vector store l
 
 ## Appendix
 
-### A. Final Submission Checklist
-
-- [x] Selected one approved project domain — **NLP Customer Support**
-- [x] Public GitHub repository is accessible
-- [x] Dataset is not committed to GitHub (`*.db`, `chroma_db/` gitignored)
-- [x] Data is auto-generated on first run (no manual download needed)
-- [x] Course techniques clearly documented — Transfer Learning, RAG, Transformer, NLP, Docker
-- [x] Prediction app supports sample chat input
-- [x] Prediction app served using Docker (`docker compose up --build`)
-- [x] Report includes UI screenshots (Figures 1–6)
-- [x] Limitations and future work documented
-- [x] Deadline respected: submitted by **25 June 2026**
-
-### B. Final Notes
-
-This project is mandatory for certification. The certification program ends on **26 June 2026**, so the deadline of **25 June 2026** is strictly maintained.
-
-There may be a project review on **26 June 2026**. Be ready to explain the LangGraph agent routing logic, the RAG pipeline (LaBSE → ChromaDB → LLM prompt construction), multi-tenant isolation via API key, the Docker setup, and the screenshots in this report.
+LLM - Lage Language Model 
+LaBSE - Language-agnostic BERT Sentence Encoder
