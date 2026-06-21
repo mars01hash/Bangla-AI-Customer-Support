@@ -186,6 +186,43 @@ class OrderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Product ───────────────────────────────────────────────────────────────────
+class ProductCreate(BaseModel):
+    name: str
+    name_bn: Optional[str] = None
+    description: Optional[str] = None
+    price: float
+    original_price: Optional[float] = None
+    category: Optional[str] = None
+    features: Optional[str] = None   # JSON array string
+    in_stock: bool = True
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    name_bn: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    original_price: Optional[float] = None
+    category: Optional[str] = None
+    features: Optional[str] = None
+    in_stock: Optional[bool] = None
+
+class ProductResponse(BaseModel):
+    id: int
+    name: str
+    name_bn: Optional[str] = None
+    description: Optional[str] = None
+    price: float
+    original_price: Optional[float] = None
+    category: Optional[str] = None
+    features: Optional[str] = None
+    in_stock: bool
+    tenant_id: Optional[str] = None
+    created_at: datetime.datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ── Knowledge ─────────────────────────────────────────────────────────────────
 class KnowledgeDocumentResponse(BaseModel):
     id: int

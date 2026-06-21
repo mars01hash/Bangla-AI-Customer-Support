@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uuid
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.models import User, Order, Tenant
+from app.models import User, Order, Tenant, Product
 from app.auth import get_password_hash
 from app.api.endpoints import api_router
 from app.rag.vectorstore import vector_store
@@ -188,6 +188,57 @@ def seed_database():
     finally:
         db.close()
         
+    # Seed sample products for ShopBD
+    db = SessionLocal()
+    try:
+        if db.query(Product).count() == 0:
+            import json as _json
+            sample_products = [
+                Product(name="Samsung Galaxy A55", name_bn="স্যামসাং গ্যালাক্সি A55",
+                        description="A premium mid-range smartphone with stunning display and pro-grade camera.",
+                        price=45000, original_price=52000, category="smartphone",
+                        features=_json.dumps(["6.6\" Super AMOLED 120Hz", "50MP Triple Camera", "5000mAh Battery", "8GB RAM + 256GB Storage", "IP67 Water Resistant"]),
+                        in_stock=True),
+                Product(name="iPhone 15", name_bn="আইফোন ১৫",
+                        description="Apple's latest iPhone with Dynamic Island and advanced camera system.",
+                        price=115000, original_price=125000, category="smartphone",
+                        features=_json.dumps(["6.1\" Super Retina XDR", "48MP Main Camera", "A16 Bionic Chip", "USB-C Charging", "Emergency SOS via Satellite"]),
+                        in_stock=True),
+                Product(name="Xiaomi Redmi Note 13", name_bn="শাওমি রেডমি নোট ১৩",
+                        description="Best budget smartphone with 200MP camera and fast charging.",
+                        price=25000, original_price=28000, category="smartphone",
+                        features=_json.dumps(["200MP Main Camera", "6.67\" AMOLED", "5000mAh + 67W Fast Charge", "Snapdragon 7s Gen 2", "NFC Support"]),
+                        in_stock=True),
+                Product(name="Dell Inspiron 15", name_bn="ডেল ইন্সপায়রন ১৫",
+                        description="Reliable everyday laptop perfect for students and professionals.",
+                        price=65000, original_price=72000, category="laptop",
+                        features=_json.dumps(["Intel Core i5-13th Gen", "8GB DDR5 RAM", "512GB NVMe SSD", "15.6\" FHD Display", "Windows 11 Home"]),
+                        in_stock=True),
+                Product(name="Sony WH-1000XM5", name_bn="সনি WH-1000XM5 হেডফোন",
+                        description="Industry-leading noise cancelling headphones with 30-hour battery.",
+                        price=38000, original_price=42000, category="audio",
+                        features=_json.dumps(["Industry-Best Noise Cancelling", "30hr Battery Life", "Multipoint Connection (2 devices)", "Crystal-clear Hands-free Calling", "Foldable Design"]),
+                        in_stock=True),
+                Product(name="JBL Flip 6", name_bn="JBL ফ্লিপ ৬ স্পিকার",
+                        description="Portable waterproof Bluetooth speaker with powerful JBL Pro sound.",
+                        price=12000, original_price=14500, category="audio",
+                        features=_json.dumps(["IP67 Waterproof & Dustproof", "12 Hours Playtime", "JBL PartyBoost", "Bold JBL Original Pro Sound", "USB-C Charging"]),
+                        in_stock=True),
+                Product(name="Walton Primo NX8", name_bn="ওয়ালটন প্রিমো NX8",
+                        description="Bangladeshi brand smartphone with great value for money.",
+                        price=18000, original_price=20000, category="smartphone",
+                        features=_json.dumps(["6.78\" 90Hz Display", "50MP + 8MP Dual Camera", "5000mAh Battery", "33W Fast Charging", "Made in Bangladesh"]),
+                        in_stock=True),
+            ]
+            db.add_all(sample_products)
+            db.commit()
+            logger.info("Sample products seeded for ShopBD.")
+    except Exception as e:
+        logger.error(f"Error seeding products: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
     # Pre-seed Chroma vector database with sample customer support questions
     try:
         logger.info("Checking and seeding Chroma vector base FAQs...")

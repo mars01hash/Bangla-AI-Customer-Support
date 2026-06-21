@@ -8,7 +8,9 @@ from app.agents.nodes import (
     order_support_agent_node,
     billing_agent_node,
     complaint_agent_node,
-    escalation_agent_node
+    escalation_agent_node,
+    product_agent_node,
+    order_placement_agent_node,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,8 +21,8 @@ def route_from_detector(state: AgentState) -> str:
     """Route message to appropriate agent based on detected intent category."""
     category = state.get("category", "faq")
     logger.info(f"Routing edge from detector: category is '{category}'")
-    
-    if category in ["greeting", "faq", "order", "billing", "complaint", "escalation"]:
+
+    if category in ["greeting", "faq", "order", "billing", "complaint", "escalation", "product", "order_placement"]:
         return category
     return "faq"
 
@@ -54,6 +56,8 @@ builder.add_node("order", order_support_agent_node)
 builder.add_node("billing", billing_agent_node)
 builder.add_node("complaint", complaint_agent_node)
 builder.add_node("escalation", escalation_agent_node)
+builder.add_node("product", product_agent_node)
+builder.add_node("order_placement", order_placement_agent_node)
 
 # 3. Define Entry Point
 builder.add_edge(START, "detector")
@@ -68,7 +72,9 @@ builder.add_conditional_edges(
         "order": "order",
         "billing": "billing",
         "complaint": "complaint",
-        "escalation": "escalation"
+        "escalation": "escalation",
+        "product": "product",
+        "order_placement": "order_placement",
     }
 )
 
@@ -95,6 +101,8 @@ builder.add_edge("greeting", END)
 builder.add_edge("order", END)
 builder.add_edge("billing", END)
 builder.add_edge("escalation", END)
+builder.add_edge("product", END)
+builder.add_edge("order_placement", END)
 
 # 6. Compile Graph
 support_graph = builder.compile()

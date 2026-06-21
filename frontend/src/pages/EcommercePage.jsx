@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   ShoppingCart, Star, Search, Heart, Truck, Shield, RefreshCw, X, Plus, Minus, Trash2,
   ArrowLeft, CheckCircle, Package, Clock, MapPin, CreditCard,
@@ -9,22 +9,51 @@ import { API_BASE as API } from '../config.js'
 const ORDERS_KEY = 'shopbd_orders'
 
 // ── Data ──────────────────────────────────────────────────────────────────────
-const PRODUCTS = [
-  { id: 1,  name: 'পাঞ্জাবি',            nameEn: 'Cotton Panjabi',    price: 850,  original: 1200, emoji: '👘', cat: 'পোশাক',        rating: 4.5, reviews: 128, badge: '29% OFF', bt: 'sale' },
-  { id: 2,  name: 'জামদানি শাড়ি',        nameEn: 'Jamdani Saree',     price: 2500, original: 3200, emoji: '🥻', cat: 'পোশাক',        rating: 4.8, reviews: 245, badge: 'BESTSELLER', bt: 'best' },
-  { id: 3,  name: 'ওয়্যারলেস ইয়ারবাড',  nameEn: 'Wireless Earbuds',  price: 1200, original: 1800, emoji: '🎧', cat: 'ইলেকট্রনিক্স', rating: 4.3, reviews: 89,  badge: 'NEW', bt: 'new' },
-  { id: 4,  name: 'স্মার্ট ওয়াচ',        nameEn: 'Smart Watch',       price: 3500, original: 4500, emoji: '⌚', cat: 'ইলেকট্রনিক্স', rating: 4.6, reviews: 312, badge: '22% OFF', bt: 'sale' },
-  { id: 5,  name: 'লেদার হ্যান্ডব্যাগ',  nameEn: 'Leather Handbag',   price: 1800, original: 2200, emoji: '👜', cat: 'আনুষাঙ্গিক',  rating: 4.4, reviews: 176, badge: 'TOP RATED', bt: 'best' },
-  { id: 6,  name: 'সানগ্লাস',             nameEn: 'UV Sunglasses',     price: 650,  original: 950,  emoji: '🕶️', cat: 'আনুষাঙ্গিক',  rating: 4.1, reviews: 64,  badge: '', bt: '' },
-  { id: 7,  name: 'রানিং শু',              nameEn: 'Running Shoes',     price: 2200, original: 2800, emoji: '👟', cat: 'জুতা',         rating: 4.7, reviews: 403, badge: 'HOT', bt: 'best' },
-  { id: 8,  name: 'মোবাইল কেস',           nameEn: 'Phone Case',        price: 350,  original: 500,  emoji: '📱', cat: 'আনুষাঙ্গিক',  rating: 4.0, reviews: 52,  badge: '', bt: '' },
-  { id: 9,  name: 'সিল্ক শাড়ি',           nameEn: 'Silk Saree',        price: 3200, original: 4000, emoji: '👗', cat: 'পোশাক',        rating: 4.6, reviews: 189, badge: '20% OFF', bt: 'sale' },
-  { id: 10, name: 'ব্লুটুথ স্পিকার',      nameEn: 'Bluetooth Speaker', price: 980,  original: 1400, emoji: '🔊', cat: 'ইলেকট্রনিক্স', rating: 4.2, reviews: 73,  badge: 'NEW', bt: 'new' },
-  { id: 11, name: 'শোল্ডার ব্যাগ',        nameEn: 'Shoulder Bag',      price: 1250, original: 1800, emoji: '👛', cat: 'আনুষাঙ্গিক',  rating: 4.3, reviews: 94,  badge: '', bt: '' },
-  { id: 12, name: 'ক্যাজুয়াল স্নিকার্স', nameEn: 'Casual Sneakers',   price: 1650, original: 2100, emoji: '👞', cat: 'জুতা',         rating: 4.4, reviews: 156, badge: '21% OFF', bt: 'sale' },
+const CATEGORY_EMOJI = {
+  smartphone: '📱', laptop: '💻', audio: '🎧', speaker: '🔊',
+  পোশাক: '👗', আনুষাঙ্গিক: '👜', জুতা: '👟', ইলেকট্রনিক্স: '📱',
+  fashion: '👗', accessories: '👜', shoes: '👟', electronics: '📱',
+}
+const catEmoji = (cat) => CATEGORY_EMOJI[cat?.toLowerCase()] || CATEGORY_EMOJI[cat] || '🛍️'
+
+function discountBadge(price, original) {
+  if (!original || original <= price) return { text: '', bt: '' }
+  const pct = Math.round((1 - price / original) * 100)
+  return { text: `${pct}% OFF`, bt: 'sale' }
+}
+
+// Map a DB product to the card shape the UI expects
+function dbToCard(p) {
+  const { text, bt } = discountBadge(p.price, p.original_price)
+  return {
+    id: `db-${p.id}`, dbId: p.id,
+    name: p.name_bn || p.name, nameEn: p.name,
+    price: p.price, original: p.original_price || p.price,
+    emoji: catEmoji(p.category), cat: p.category || 'general',
+    rating: 4.5, reviews: 0,
+    badge: text, bt,
+    in_stock: p.in_stock,
+    description: p.description,
+    features: p.features,
+  }
+}
+
+const STATIC_PRODUCTS = [
+  { id: 1,  name: 'পাঞ্জাবি',            nameEn: 'Cotton Panjabi',    price: 850,  original: 1200, emoji: '👘', cat: 'পোশাক',        rating: 4.5, reviews: 128, badge: '29% OFF', bt: 'sale',  in_stock: true },
+  { id: 2,  name: 'জামদানি শাড়ি',        nameEn: 'Jamdani Saree',     price: 2500, original: 3200, emoji: '🥻', cat: 'পোশাক',        rating: 4.8, reviews: 245, badge: 'BESTSELLER', bt: 'best', in_stock: true },
+  { id: 3,  name: 'ওয়্যারলেস ইয়ারবাড',  nameEn: 'Wireless Earbuds',  price: 1200, original: 1800, emoji: '🎧', cat: 'ইলেকট্রনিক্স', rating: 4.3, reviews: 89,  badge: 'NEW', bt: 'new',   in_stock: true },
+  { id: 4,  name: 'স্মার্ট ওয়াচ',        nameEn: 'Smart Watch',       price: 3500, original: 4500, emoji: '⌚', cat: 'ইলেকট্রনিক্স', rating: 4.6, reviews: 312, badge: '22% OFF', bt: 'sale', in_stock: true },
+  { id: 5,  name: 'লেদার হ্যান্ডব্যাগ',  nameEn: 'Leather Handbag',   price: 1800, original: 2200, emoji: '👜', cat: 'আনুষাঙ্গিক',  rating: 4.4, reviews: 176, badge: 'TOP RATED', bt: 'best', in_stock: true },
+  { id: 6,  name: 'সানগ্লাস',             nameEn: 'UV Sunglasses',     price: 650,  original: 950,  emoji: '🕶️', cat: 'আনুষাঙ্গিক',  rating: 4.1, reviews: 64,  badge: '', bt: '',        in_stock: true },
+  { id: 7,  name: 'রানিং শু',              nameEn: 'Running Shoes',     price: 2200, original: 2800, emoji: '👟', cat: 'জুতা',         rating: 4.7, reviews: 403, badge: 'HOT', bt: 'best',  in_stock: true },
+  { id: 8,  name: 'মোবাইল কেস',           nameEn: 'Phone Case',        price: 350,  original: 500,  emoji: '📱', cat: 'আনুষাঙ্গিক',  rating: 4.0, reviews: 52,  badge: '', bt: '',        in_stock: true },
+  { id: 9,  name: 'সিল্ক শাড়ি',           nameEn: 'Silk Saree',        price: 3200, original: 4000, emoji: '👗', cat: 'পোশাক',        rating: 4.6, reviews: 189, badge: '20% OFF', bt: 'sale', in_stock: true },
+  { id: 10, name: 'ব্লুটুথ স্পিকার',      nameEn: 'Bluetooth Speaker', price: 980,  original: 1400, emoji: '🔊', cat: 'ইলেকট্রনিক্স', rating: 4.2, reviews: 73,  badge: 'NEW', bt: 'new',   in_stock: true },
+  { id: 11, name: 'শোল্ডার ব্যাগ',        nameEn: 'Shoulder Bag',      price: 1250, original: 1800, emoji: '👛', cat: 'আনুষাঙ্গিক',  rating: 4.3, reviews: 94,  badge: '', bt: '',        in_stock: true },
+  { id: 12, name: 'ক্যাজুয়াল স্নিকার্স', nameEn: 'Casual Sneakers',   price: 1650, original: 2100, emoji: '👞', cat: 'জুতা',         rating: 4.4, reviews: 156, badge: '21% OFF', bt: 'sale', in_stock: true },
 ]
 
-const CATEGORIES = ['সব', 'পোশাক', 'ইলেকট্রনিক্স', 'আনুষাঙ্গিক', 'জুতা']
+const CATEGORIES = ['সব', 'পোশাক', 'ইলেকট্রনিক্স', 'আনুষাঙ্গিক', 'জুতা', 'smartphone', 'laptop', 'audio']
 const DIVISIONS  = ['Dhaka', 'Chittagong', 'Sylhet', 'Rajshahi', 'Khulna', 'Barishal', 'Rangpur', 'Mymensingh']
 
 const DELIVERY_OPTS = [
@@ -447,6 +476,14 @@ export default function EcommercePage() {
   const [cat, setCat]     = useState('সব')
   const [cartOpen, setCartOpen] = useState(false)
   const [addedId, setAddedId]   = useState(null)
+  const [dbProducts, setDbProducts] = useState([])
+
+  useEffect(() => {
+    fetch(`${API}/api/products`)
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setDbProducts(data.filter(p => p.in_stock).map(dbToCard)))
+      .catch(() => {})
+  }, [])
 
   // Passed from CheckoutView → stored here → passed to PaymentView
   const [checkoutPayload, setCheckoutPayload] = useState(null) // { form, subtotal, delivCost, total }
@@ -511,8 +548,9 @@ export default function EcommercePage() {
     setCartOpen(false)
   }
 
-  // ── Product filtering (only re-runs when search/cat change) ────────────────
-  const filtered = PRODUCTS.filter(p => {
+  // ── Product filtering — static + DB products merged ────────────────────────
+  const allProducts = [...STATIC_PRODUCTS, ...dbProducts]
+  const filtered = allProducts.filter(p => {
     const okCat    = cat === 'সব' || p.cat === cat
     const okSearch = !search || p.name.includes(search) || p.nameEn.toLowerCase().includes(search.toLowerCase())
     return okCat && okSearch

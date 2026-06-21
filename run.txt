@@ -26,7 +26,7 @@ Option B: Running Locally (Active Development)
   python -m venv venv
   venv\Scripts\activate
   pip install -r requirements.txt
-  
+  uvicorn app.main:app --host 0.0.0.0 --port 8090 --reload
 
   API runs at http://localhost:8090
   Swagger docs at http://localhost:8090/docs
@@ -46,8 +46,57 @@ Option B: Running Locally (Active Development)
 Pre-seeded Accounts
 -------------------
   Customer Chat    No login required — open http://localhost:5173
-  Agent Portal     agent@example.com   / agentpassword123
-  Admin Dashboard  admin@example.com   / adminpassword123
+
+  Platform Super Admin
+    super@platform.com       / superpassword123
+
+  Legacy Admin (backward compat)
+    admin@example.com        / adminpassword123
+
+  ShopBD Tenant
+    admin@shopbd.com         / storepassword123   (store_admin)
+    agent@shopbd.com         / agentpassword123   (agent)
+    agent@example.com        / agentpassword123   (agent, legacy)
+
+  FashionBD Tenant
+    admin@fashionbd.com      / storepassword123   (store_admin)
+
+
+Environment Variables (.env in project root)
+--------------------------------------------
+  Copy .env.example to .env and fill in your values:
+
+    cp .env.example .env
+
+  Key variables:
+
+    LLM_PROVIDER=openrouter          # mock | openai | groq | huggingface | openrouter
+    LLM_API_KEY=sk-or-v1-...         # API key for the chosen provider
+    LLM_MODEL_NAME=meta-llama/llama-3.1-8b-instruct:free
+
+    DATABASE_URL=sqlite:///./support_platform.db
+    CHROMA_PERSIST_DIRECTORY=./chroma_db
+    JWT_SECRET=change-me-in-production
+    TELEGRAM_BOT_TOKEN=              # optional
+
+  The backend reads .env from the project root (not backend/.env).
+  Do NOT create a separate backend/.env — it will be ignored.
+
+
+Bot Capabilities
+----------------
+  The AI agent supports the following intents:
+
+    greeting    — Welcome messages in Bangla or English
+    order       — Order tracking by ID (e.g. ORD-A1B2C or bare "ORD-E3785")
+    product     — Product details + persuasive sales pitch with price & features
+    billing     — Billing and payment issue triage
+    complaint   — Complaint handling with auto-escalation on negative sentiment
+    escalation  — Creates a support ticket and notifies an agent
+    faq         — RAG-powered answers from the knowledge base
+
+  Language: customer selects Bangla or English before starting chat.
+  Both web widget (ChatWidget) and full CustomerChat page are supported.
 
 
 ========================================================
@@ -130,5 +179,6 @@ To run anywhere with Docker:
   # edit .env — set LLM_PROVIDER and LLM_API_KEY
   docker compose up --build
 
-  Frontend will be at http://localhost, API at http://localhost/api/. The first build takes a few minutes to download and bake
-  the LaBSE model into the backend image (~800MB), but subsequent starts are fast.
+  Frontend will be at http://localhost, API at http://localhost/api/. The first build
+  takes a few minutes to download and bake the LaBSE model into the backend image
+  (~800MB), but subsequent starts are fast.

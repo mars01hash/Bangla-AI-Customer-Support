@@ -138,6 +138,24 @@ class KnowledgeDocument(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
+class Product(Base):
+    __tablename__ = "products"
+
+    id          = Column(Integer, primary_key=True, index=True)
+    tenant_id   = Column(String(36), ForeignKey("tenants.id", ondelete="SET NULL"), nullable=True)
+    name        = Column(String(255), nullable=False, index=True)
+    name_bn     = Column(String(255), nullable=True)
+    description = Column(Text, nullable=True)
+    price       = Column(Float, nullable=False)
+    original_price = Column(Float, nullable=True)   # for showing discount
+    category    = Column(String(100), nullable=True)
+    features    = Column(Text, nullable=True)        # JSON array of feature strings
+    in_stock    = Column(Boolean, default=True)
+    created_at  = Column(DateTime, default=datetime.datetime.utcnow)
+
+    tenant = relationship("Tenant", foreign_keys=[tenant_id])
+
+
 class KnowledgeEntry(Base):
     """Simple Q&A knowledge base entries managed directly by store admins."""
     __tablename__ = "knowledge_entries"

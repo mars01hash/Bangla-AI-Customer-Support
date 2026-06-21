@@ -15,7 +15,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 from app.config import settings
 from app.database import get_db
-from app.models import User, Ticket, Conversation, Message, Feedback, KnowledgeDocument, Order, Tenant, KnowledgeEntry
+from app.models import User, Ticket, Conversation, Message, Feedback, KnowledgeDocument, Order, Tenant, KnowledgeEntry, Product
 from app.schemas import (
     UserCreate, UserUpdate, UserResponse, Token, TicketCreate, TicketResponse,
     TicketUpdate, FeedbackCreate, FeedbackResponse, AnalyticsSummaryResponse,
@@ -23,6 +23,7 @@ from app.schemas import (
     OrderCreate, OrderUpdate, OrderResponse,
     TenantCreate, TenantUpdate, TenantResponse, TenantStats,
     KnowledgeEntryCreate, KnowledgeEntryResponse,
+    ProductCreate, ProductUpdate, ProductResponse,
 )
 from app.auth import (
     get_password_hash, verify_password, create_access_token,
@@ -322,9 +323,11 @@ def list_tickets(
 ):
     """Retrieve tickets scoped to the user's tenant (super_admin sees all)."""
     query = db.query(Ticket)
-    # Store admins and agents only see their own tenant's tickets
+    # Store admins and agents see their tenant's tickets + unscoped tickets (tenant_id IS NULL)
     if current_user.role in ("store_admin", "agent") and current_user.tenant_id:
-        query = query.filter(Ticket.tenant_id == current_user.tenant_id)
+        query = query.filter(
+            (Ticket.tenant_id == current_user.tenant_id) | (Ticket.tenant_id == None)
+        )
     if status:
         query = query.filter(Ticket.status == status)
     if priority:
@@ -855,7 +858,80 @@ def get_telegram_webhook_info(current_user: User = Depends(require_admin)):
 
 
 # ----------------------------------------------------
-# 9. TELEMETRY PROMETHEUS METRICS
+# 9. PRODUCT ENDPOINTS
+# ----------------------------------------------------
+
+@api_router.get("/products", response_model=List[ProductResponse])
+def list_products(
+    category: Optional[str] = None,
+    in_stock: Optional[bool] = None,
+    db: Session = Depends(get_db),
+):
+    """Public: list all products, optionally filtered by category or stock."""
+    q = db.query(Product)
+    if category:
+        q = q.filter(Product.category == category)
+    if in_stock is not None:
+        q = q.filter(Product.in_stock == in_stock)
+    return q.order_by(Product.id).all()
+
+
+@api_router.post("/products", response_model=ProductResponse)
+def create_product(
+    product_in: ProductCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """store_admin / super_admin: create a product."""
+    if current_user.role not in ("store_admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Store admin required")
+    tenant_id = current_user.tenant_id if current_user.role == "store_admin" else None
+    product = Product(**product_in.model_dump(), tenant_id=tenant_id)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@api_router.put("/products/{product_id}", response_model=ProductResponse)
+def update_product(
+    product_id: int,
+    product_in: ProductUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """store_admin / super_admin: update a product."""
+    if current_user.role not in ("store_admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Store admin required")
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    for field, value in product_in.model_dump(exclude_unset=True).items():
+        setattr(product, field, value)
+    db.commit()
+    db.refresh(product)
+    return product
+
+
+@api_router.delete("/products/{product_id}")
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """store_admin / super_admin: delete a product."""
+    if current_user.role not in ("store_admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Store admin required")
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    db.delete(product)
+    db.commit()
+    return {"ok": True}
+
+
+# ----------------------------------------------------
+# 10. TELEMETRY PROMETHEUS METRICS
 # ----------------------------------------------------
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi import Response

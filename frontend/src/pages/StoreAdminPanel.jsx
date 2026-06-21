@@ -3,6 +3,7 @@ import {
   Store, Key, Code2, Book, Users, Ticket, Settings, Plus, Trash2,
   RefreshCw, Copy, Check, CheckCircle, ChevronRight, Shield,
   BarChart2, MessageSquare, Globe, Palette, X, AlertCircle,
+  Package, Edit2, ToggleLeft, ToggleRight,
 } from 'lucide-react'
 
 import { API_BASE as API } from '../config.js'
@@ -32,9 +33,17 @@ export default function StoreAdminPanel({ token }) {
   const [kb, setKb]         = useState([])
   const [agents, setAgents] = useState([])
   const [tickets, setTickets] = useState([])
+  const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
   const [embedCode, setEmbedCode] = useState(null)
+
+  // Product form state
+  const EMPTY_PRODUCT = { name: '', name_bn: '', description: '', price: '', original_price: '', category: '', features: '', in_stock: true }
+  const [showProductForm, setShowProductForm] = useState(false)
+  const [editingProduct, setEditingProduct]   = useState(null)  // null = create, object = edit
+  const [productForm, setProductForm]         = useState(EMPTY_PRODUCT)
+  const [productErr, setProductErr]           = useState('')
 
   // KB form
   const [showKbForm, setShowKbForm] = useState(false)
@@ -55,13 +64,14 @@ export default function StoreAdminPanel({ token }) {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
-      const [storeRes, statsRes, kbRes, agentsRes, ticketsRes, embedRes] = await Promise.all([
+      const [storeRes, statsRes, kbRes, agentsRes, ticketsRes, embedRes, prodRes] = await Promise.all([
         fetch(`${API}/api/my-store`, { headers }),
         fetch(`${API}/api/my-store/stats`, { headers }),
         fetch(`${API}/api/my-store/knowledge`, { headers }),
         fetch(`${API}/api/my-store/agents`, { headers }),
         fetch(`${API}/api/tickets`, { headers }),
         fetch(`${API}/api/my-store/embed-code`, { headers }),
+        fetch(`${API}/api/products`),
       ])
       if (storeRes.ok) {
         const s = await storeRes.json()
@@ -73,6 +83,7 @@ export default function StoreAdminPanel({ token }) {
       if (agentsRes.ok)  setAgents(await agentsRes.json())
       if (ticketsRes.ok) setTickets(await ticketsRes.json())
       if (embedRes.ok)   setEmbedCode(await embedRes.json())
+      if (prodRes.ok)    setProducts(await prodRes.json())
     } finally { setLoading(false) }
   }, [token])
 
@@ -133,13 +144,65 @@ export default function StoreAdminPanel({ token }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const openCreateProduct = () => {
+    setEditingProduct(null)
+    setProductForm(EMPTY_PRODUCT)
+    setProductErr('')
+    setShowProductForm(true)
+  }
+
+  const openEditProduct = (p) => {
+    setEditingProduct(p)
+    setProductForm({
+      name: p.name, name_bn: p.name_bn || '', description: p.description || '',
+      price: p.price, original_price: p.original_price || '',
+      category: p.category || '', features: p.features || '', in_stock: p.in_stock,
+    })
+    setProductErr('')
+    setShowProductForm(true)
+  }
+
+  const saveProduct = async () => {
+    if (!productForm.name.trim() || !productForm.price) { setProductErr('Name and price are required'); return }
+    setProductErr('')
+    const payload = {
+      ...productForm,
+      price: parseFloat(productForm.price),
+      original_price: productForm.original_price ? parseFloat(productForm.original_price) : null,
+    }
+    const url    = editingProduct ? `${API}/api/products/${editingProduct.id}` : `${API}/api/products`
+    const method = editingProduct ? 'PUT' : 'POST'
+    const res    = await fetch(url, { method, headers, body: JSON.stringify(payload) })
+    if (res.ok) {
+      setShowProductForm(false)
+      fetchAll()
+    } else {
+      const err = await res.json()
+      setProductErr(err.detail || 'Failed to save product')
+    }
+  }
+
+  const deleteProduct = async (id, name) => {
+    if (!window.confirm(`Delete product "${name}"?`)) return
+    await fetch(`${API}/api/products/${id}`, { method: 'DELETE', headers })
+    setProducts(prev => prev.filter(p => p.id !== id))
+  }
+
+  const toggleStock = async (p) => {
+    const res = await fetch(`${API}/api/products/${p.id}`, {
+      method: 'PUT', headers, body: JSON.stringify({ in_stock: !p.in_stock }),
+    })
+    if (res.ok) setProducts(prev => prev.map(x => x.id === p.id ? { ...x, in_stock: !x.in_stock } : x))
+  }
+
   const TABS = [
-    { id: 'overview', label: 'Overview',       icon: BarChart2 },
-    { id: 'kb',       label: 'Knowledge Base', icon: Book      },
-    { id: 'embed',    label: 'Embed Code',     icon: Code2     },
-    { id: 'agents',   label: 'Agents',         icon: Users     },
-    { id: 'tickets',  label: 'Tickets',        icon: Ticket    },
-    { id: 'settings', label: 'Settings',       icon: Settings  },
+    { id: 'overview',  label: 'Overview',       icon: BarChart2 },
+    { id: 'products',  label: 'Products',        icon: Package   },
+    { id: 'kb',        label: 'Knowledge Base', icon: Book      },
+    { id: 'embed',     label: 'Embed Code',     icon: Code2     },
+    { id: 'agents',    label: 'Agents',         icon: Users     },
+    { id: 'tickets',   label: 'Tickets',        icon: Ticket    },
+    { id: 'settings',  label: 'Settings',       icon: Settings  },
   ]
 
   return (
@@ -211,6 +274,152 @@ export default function StoreAdminPanel({ token }) {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Products ── */}
+      {tab === 'products' && (
+        <div>
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-white">Product Inventory</h2>
+              <p className="text-sm text-slate-400 mt-0.5">{products.length} products · {products.filter(p => p.in_stock).length} in stock</p>
+            </div>
+            <button onClick={openCreateProduct}
+              className="flex items-center gap-2 bg-accentPurple hover:bg-accentPurple/90 text-white px-4 py-2 rounded-lg text-sm font-semibold transition">
+              <Plus size={15}/> Add Product
+            </button>
+          </div>
+
+          {/* Product Form Modal */}
+          {showProductForm && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowProductForm(false)} />
+              <div className="relative w-full max-w-lg bg-slate-900 border border-slate-700 rounded-2xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-5">
+                  <h3 className="font-bold text-white text-lg">{editingProduct ? 'Edit Product' : 'Add Product'}</h3>
+                  <button onClick={() => setShowProductForm(false)} className="text-slate-400 hover:text-white"><X size={18}/></button>
+                </div>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Name (English) *</label>
+                      <input className={inputCls} value={productForm.name}
+                        onChange={e => setProductForm(f => ({ ...f, name: e.target.value }))} placeholder="Samsung Galaxy A55" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Name (Bangla)</label>
+                      <input className={inputCls} value={productForm.name_bn}
+                        onChange={e => setProductForm(f => ({ ...f, name_bn: e.target.value }))} placeholder="স্যামসাং গ্যালাক্সি" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+                    <textarea rows={2} className={inputCls + ' resize-none'} value={productForm.description}
+                      onChange={e => setProductForm(f => ({ ...f, description: e.target.value }))} placeholder="Short product description..." />
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Price (৳) *</label>
+                      <input className={inputCls} type="number" min="0" value={productForm.price}
+                        onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} placeholder="45000" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Original Price (৳)</label>
+                      <input className={inputCls} type="number" min="0" value={productForm.original_price}
+                        onChange={e => setProductForm(f => ({ ...f, original_price: e.target.value }))} placeholder="52000" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">Category</label>
+                      <input className={inputCls} value={productForm.category}
+                        onChange={e => setProductForm(f => ({ ...f, category: e.target.value }))} placeholder="smartphone" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Features (one per line)</label>
+                    <textarea rows={4} className={inputCls + ' resize-none font-mono text-xs'} value={
+                        (() => { try { return JSON.parse(productForm.features || '[]').join('\n') } catch { return productForm.features || '' } })()
+                      }
+                      onChange={e => {
+                        const lines = e.target.value.split('\n').filter(l => l.trim())
+                        setProductForm(f => ({ ...f, features: JSON.stringify(lines) }))
+                      }} placeholder={"50MP Camera\n5000mAh Battery\n8GB RAM"} />
+                    <p className="text-[10px] text-slate-500 mt-1">Each line = one feature bullet the bot will use in its sales pitch.</p>
+                  </div>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <div onClick={() => setProductForm(f => ({ ...f, in_stock: !f.in_stock }))}>
+                      {productForm.in_stock
+                        ? <ToggleRight size={28} className="text-emerald-400" />
+                        : <ToggleLeft  size={28} className="text-slate-500" />}
+                    </div>
+                    <span className="text-sm text-slate-300">{productForm.in_stock ? 'In Stock' : 'Out of Stock'}</span>
+                  </label>
+                  {productErr && <p className="text-rose-400 text-xs">{productErr}</p>}
+                  <button onClick={saveProduct}
+                    className="w-full bg-accentPurple hover:bg-accentPurple/90 text-white py-2.5 rounded-lg font-semibold text-sm transition">
+                    {editingProduct ? 'Save Changes' : 'Add Product'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Product Table */}
+          {products.length === 0 ? (
+            <div className="text-center py-20 text-slate-500">
+              <Package size={40} className="mx-auto mb-3 opacity-40" />
+              <p>No products yet. Add your first product.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {products.map(p => {
+                let features = []
+                try { features = JSON.parse(p.features || '[]') } catch {}
+                const discount = p.original_price && p.original_price > p.price
+                  ? Math.round((1 - p.price / p.original_price) * 100) : 0
+                return (
+                  <div key={p.id} className={`glass-panel rounded-xl p-4 flex flex-wrap items-start gap-4 ${!p.in_stock ? 'opacity-60' : ''}`}>
+                    <div className="w-12 h-12 rounded-xl bg-slate-800 flex items-center justify-center text-2xl shrink-0">
+                      {p.category === 'smartphone' ? '📱' : p.category === 'laptop' ? '💻' : p.category === 'audio' ? '🎧' : '🛍️'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                        <p className="font-semibold text-white text-sm">{p.name}</p>
+                        {p.name_bn && <span className="text-xs text-slate-400">{p.name_bn}</span>}
+                        {p.category && <span className="text-[10px] bg-slate-800 border border-slate-700 rounded-full px-2 py-0.5 text-slate-400">{p.category}</span>}
+                        {discount > 0 && <span className="text-[10px] bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-full px-2 py-0.5">{discount}% OFF</span>}
+                      </div>
+                      {p.description && <p className="text-xs text-slate-400 mb-1.5 line-clamp-1">{p.description}</p>}
+                      {features.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {features.slice(0, 3).map((f, i) => (
+                            <span key={i} className="text-[10px] bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5 text-slate-400">✓ {f}</span>
+                          ))}
+                          {features.length > 3 && <span className="text-[10px] text-slate-500">+{features.length - 3} more</span>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-white">৳{p.price.toLocaleString()}</p>
+                      {p.original_price && <p className="text-xs text-slate-500 line-through">৳{p.original_price.toLocaleString()}</p>}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button onClick={() => toggleStock(p)} title={p.in_stock ? 'Mark out of stock' : 'Mark in stock'}
+                        className="text-slate-400 hover:text-white transition">
+                        {p.in_stock ? <ToggleRight size={22} className="text-emerald-400" /> : <ToggleLeft size={22} className="text-slate-500" />}
+                      </button>
+                      <button onClick={() => openEditProduct(p)} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition">
+                        <Edit2 size={13}/>
+                      </button>
+                      <button onClick={() => deleteProduct(p.id, p.name)} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-rose-500/20 flex items-center justify-center text-slate-400 hover:text-rose-400 transition">
+                        <Trash2 size={13}/>
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 
