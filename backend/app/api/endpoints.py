@@ -38,6 +38,27 @@ from app.rag.ingestion import document_ingestor
 
 logger = logging.getLogger(__name__)
 
+# ── Prometheus metrics ────────────────────────────────────────────────────────
+from prometheus_client import Counter, Histogram, Gauge
+
+chat_requests_total = Counter(
+    "chat_requests_total", "Total chat messages received", ["language", "sentiment"]
+)
+chat_latency_seconds = Histogram(
+    "chat_latency_seconds", "Chat endpoint response time in seconds",
+    buckets=[0.5, 1, 2, 5, 10, 30]
+)
+tickets_created_total = Counter(
+    "tickets_created_total", "Total support tickets created", ["status"]
+)
+active_conversations = Gauge(
+    "active_conversations_total", "Number of distinct conversation sessions"
+)
+orders_placed_total = Counter(
+    "orders_placed_total", "Total orders placed"
+)
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Create main router
 api_router = APIRouter()
 
@@ -160,8 +181,9 @@ def chat_rest(
         "sources": []
     }
     
-    graph_output = support_graph.invoke(state_input)
-    
+    with chat_latency_seconds.time():
+        graph_output = support_graph.invoke(state_input)
+
     # Extract outcomes
     answer = graph_output.get("answer", "I couldn't process this.")
     confidence = graph_output.get("confidence_score", 1.0)
@@ -170,6 +192,9 @@ def chat_rest(
     sentiment = graph_output.get("detected_sentiment", "neutral")
     ticket_escalated = graph_output.get("ticket_escalated", False)
     tkt_id = graph_output.get("ticket_id", None)
+
+    chat_requests_total.labels(language=lang, sentiment=sentiment).inc()
+    active_conversations.set(db.query(Conversation).count())
     
     # 4. Save to Database
     user_msg = Message(conversation_id=conv.id, sender="user", content=message_in)
@@ -312,6 +337,7 @@ def create_ticket(ticket_in: TicketCreate, db: Session = Depends(get_db)):
     db.add(ticket)
     db.commit()
     db.refresh(ticket)
+    tickets_created_total.labels(status="open").inc()
     return ticket
 
 @api_router.get("/tickets", response_model=List[TicketResponse])
@@ -438,6 +464,7 @@ def place_order_public(order_in: OrderCreate, db: Session = Depends(get_db)):
     db.add(order)
     db.commit()
     db.refresh(order)
+    orders_placed_total.inc()
     logger.info(f"Public order placed: {order_id} for {order_in.customer_name}")
     return order
 
