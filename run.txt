@@ -182,3 +182,10 @@ To run anywhere with Docker:
   Frontend will be at http://localhost, API at http://localhost/api/. The first build
   takes a few minutes to download and bake the LaBSE model into the backend image
   (~800MB), but subsequent starts are fast.
+
+
+--------------
+
+you can build now. Run from the project root:
+
+  docker compose -f deployment/docker-compose.yml up --build
