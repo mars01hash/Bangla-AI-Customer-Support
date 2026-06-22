@@ -28,7 +28,7 @@ services:
     container_name: customer_support_backend
     restart: always
     ports:
-      - "8000:8000"
+      - "8090:8090"
     env_file:
       - ../.env
     environment:
